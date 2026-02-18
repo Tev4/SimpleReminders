@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Linq;
 using System.Windows.Forms;
+using System.IO;
 using SimpleReminders.Models;
 using SimpleReminders.Services;
 
@@ -46,6 +47,7 @@ namespace SimpleReminders.Forms
         private void InitializeComponent()
         {
             this.Text = "Manage Reminders";
+            if (File.Exists("SimpleReminders.ico")) this.Icon = new Icon("SimpleReminders.ico");
             this.Size = new System.Drawing.Size(500, 500);
             this.StartPosition = FormStartPosition.CenterScreen;
             

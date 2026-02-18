@@ -40,7 +40,7 @@ namespace SimpleReminders
 
             _notifyIcon = new NotifyIcon
             {
-                Icon = SystemIcons.Application,
+                Icon = File.Exists("SimpleReminders.ico") ? new Icon("SimpleReminders.ico") : SystemIcons.Application,
                 Visible = true,
                 Text = "Simple Reminders"
             };

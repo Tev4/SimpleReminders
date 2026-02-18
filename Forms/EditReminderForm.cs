@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using System.IO;
 using SimpleReminders.Models;
 
 namespace SimpleReminders.Forms
@@ -38,6 +39,7 @@ namespace SimpleReminders.Forms
         private void InitializeComponent()
         {
             this.Text = _isNew ? "New Reminder" : "Edit Reminder";
+            if (File.Exists("SimpleReminders.ico")) this.Icon = new Icon("SimpleReminders.ico");
             this.Size = new Size(400, 500);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;

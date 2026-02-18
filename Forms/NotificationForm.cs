@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
+using System.IO;
 
 namespace SimpleReminders.Forms
 {
@@ -18,6 +19,7 @@ namespace SimpleReminders.Forms
             _reminder = reminder;
 
             // Form Setup
+            if (File.Exists("SimpleReminders.ico")) this.Icon = new Icon("SimpleReminders.ico");
             this.FormBorderStyle = FormBorderStyle.None;
             this.ShowInTaskbar = false;
             this.StartPosition = FormStartPosition.Manual;
