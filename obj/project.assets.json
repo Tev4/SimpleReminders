@@ -13,11 +13,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "E:\\Dev\\SimpleReminders\\SimpleReminders\\SimpleReminders.csproj",
+      "projectUniqueName": "E:\\Dev\\SimpleReminders\\SimpleReminders.csproj",
       "projectName": "SimpleReminders",
-      "projectPath": "E:\\Dev\\SimpleReminders\\SimpleReminders\\SimpleReminders.csproj",
+      "projectPath": "E:\\Dev\\SimpleReminders\\SimpleReminders.csproj",
       "packagesPath": "C:\\Users\\Teva\\.nuget\\packages\\",
-      "outputPath": "E:\\Dev\\SimpleReminders\\SimpleReminders\\obj\\",
+      "outputPath": "E:\\Dev\\SimpleReminders\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\Teva\\AppData\\Roaming\\NuGet\\NuGet.Config"

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SimpleReminders")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9720d5307b5f0af6167333e7cfb38279a72323fc")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+12ae9ea0d269c5ee5a4655ac97bfa2755144c8d2")]
 [assembly: System.Reflection.AssemblyProductAttribute("SimpleReminders")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SimpleReminders")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
