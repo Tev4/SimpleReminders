@@ -27,11 +27,18 @@ namespace SimpleReminders.Forms
         private Button _duplicateButton = null!;
         private Button _deleteButton = null!;
         private Button _debugButton = null!;
+        private MenuStrip _menuStrip = null!;
+        private ToolStripMenuItem _runOnStartupMenuItem = null!;
+        private ToolStripMenuItem _minimizedToTrayMenuItem = null!;
+        private readonly StartupService _startupService;
+        private readonly SettingsService _settingsService;
         private int _dragInsertIndex = -1;
 
-        public ManagerForm(ReminderManager reminderManager)
+        public ManagerForm(ReminderManager reminderManager, SettingsService settingsService)
         {
             _reminderManager = reminderManager;
+            _settingsService = settingsService;
+            _startupService = new StartupService();
             InitializeComponent();
             RefreshList();
         }
@@ -238,6 +245,43 @@ namespace SimpleReminders.Forms
             btnPanel.Controls.Add(_debugButton);
 
             layout.Controls.Add(btnPanel, 0, 1);
+
+            // MenuStrip
+            _menuStrip = new MenuStrip();
+            var optionsMenu = new ToolStripMenuItem("Options");
+            
+            _runOnStartupMenuItem = new ToolStripMenuItem("Run On Startup")
+            {
+                CheckOnClick = true,
+                Checked = _startupService.IsStartupEnabled()
+            };
+            _runOnStartupMenuItem.CheckedChanged += (s, e) =>
+            {
+                _startupService.SetStartup(_runOnStartupMenuItem.Checked);
+            };
+
+            optionsMenu.DropDownItems.Add(_runOnStartupMenuItem);
+            
+            // Start Minimized To Tray logic
+            _minimizedToTrayMenuItem = new ToolStripMenuItem("Start Minimized To Tray")
+            {
+                CheckOnClick = true,
+                Checked = _settingsService.Settings.StartMinimized
+            };
+            _minimizedToTrayMenuItem.CheckedChanged += (s, e) =>
+            {
+                _settingsService.Settings.StartMinimized = _minimizedToTrayMenuItem.Checked;
+                _settingsService.SaveSettings();
+            };
+
+            optionsMenu.DropDownItems.Add(_minimizedToTrayMenuItem);
+            _menuStrip.Items.Add(optionsMenu);
+
+            this.MainMenuStrip = _menuStrip;
+            this.Controls.Add(_menuStrip); // MenuStrip at top
+            
+            // Adjust layout to be below MenuStrip
+            layout.Padding = new Padding(10, _menuStrip.Height + 10, 10, 10);
             this.Controls.Add(layout);
         }
 

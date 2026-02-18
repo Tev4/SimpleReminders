@@ -15,6 +15,8 @@ namespace SimpleReminders
         private NotificationWindowManager _notificationWindowManager;
         private ManagerForm? _managerForm;
         private readonly Control _uiContext;
+        private readonly SettingsService _settingsService;
+        private readonly StartupService _startupService;
 
         public ReminderApplicationContext()
         {
@@ -22,6 +24,19 @@ namespace SimpleReminders
             _reminderManager.ReminderDue += OnReminderDue;
 
             _notificationWindowManager = new NotificationWindowManager();
+            _settingsService = new SettingsService();
+            _startupService = new StartupService();
+
+            // Enable startup by default on first run
+            if (!_settingsService.Settings.HasInitializedStartup)
+            {
+                if (!_startupService.IsStartupEnabled())
+                {
+                    _startupService.SetStartup(true);
+                }
+                _settingsService.Settings.HasInitializedStartup = true;
+                _settingsService.SaveSettings();
+            }
 
             _notifyIcon = new NotifyIcon
             {
@@ -39,13 +54,19 @@ namespace SimpleReminders
             // Create a hidden control on the UI thread for marshaling
             _uiContext = new Control();
             _uiContext.CreateControl();
+
+            // Show manager if not starting minimized
+            if (!_settingsService.Settings.StartMinimized)
+            {
+                ShowManager(null, EventArgs.Empty);
+            }
         }
 
         private void ShowManager(object? sender, EventArgs e)
         {
             if (_managerForm == null || _managerForm.IsDisposed)
             {
-                _managerForm = new ManagerForm(_reminderManager);
+                _managerForm = new ManagerForm(_reminderManager, _settingsService);
             }
             
             if (!_managerForm.Visible)
