@@ -115,7 +115,15 @@ namespace SimpleReminders.Forms
             var btnPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Bottom, Height = 40 };
             _cancelButton = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel };
             _saveButton = new Button { Text = "Save", DialogResult = DialogResult.OK };
-            _saveButton.Click += (s, e) => SaveData();
+
+            // Button is disabled if title is empty
+            _titleBox.TextChanged += (s, e) =>
+            {
+                _saveButton.Enabled = !string.IsNullOrWhiteSpace(_titleBox.Text);
+            };
+
+            _saveButton.Enabled = !string.IsNullOrWhiteSpace(_titleBox.Text);
+
             btnPanel.Controls.Add(_cancelButton);
             btnPanel.Controls.Add(_saveButton);
 
