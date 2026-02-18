@@ -10,9 +10,9 @@ namespace SimpleReminders.Forms
         public Reminder Reminder { get; private set; }
         private readonly bool _isNew;
 
+        private TextBox _titleBox;
         private TextBox _messageBox;
         private CheckBox _recurringCheck;
-        private ComboBox _recurrenceTypeCombo;
         private NumericUpDown _daysNum;
         private NumericUpDown _hoursNum;
         private NumericUpDown _minutesNum;
@@ -50,37 +50,26 @@ namespace SimpleReminders.Forms
             layout.ColumnCount = 2;
             layout.AutoSize = true;
 
+            // Title
+            layout.Controls.Add(new Label { Text = "Title:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Dock = DockStyle.Fill }, 0, 0);
+            _titleBox = new TextBox { Width = 250 };
+            layout.Controls.Add(_titleBox, 1, 0);
+
             // Message
-            layout.Controls.Add(new Label { Text = "Message:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Dock = DockStyle.Fill }, 0, 0);
+            layout.Controls.Add(new Label { Text = "Message:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Dock = DockStyle.Fill }, 0, 1);
             _messageBox = new TextBox { Width = 250 };
-            layout.Controls.Add(_messageBox, 1, 0);
+            layout.Controls.Add(_messageBox, 1, 1);
 
             // Due Date
-            layout.Controls.Add(new Label { Text = "Due Date:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Dock = DockStyle.Fill }, 0, 1);
+            layout.Controls.Add(new Label { Text = "Next Due Date:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Dock = DockStyle.Fill }, 0, 2);
             _dueDatePicker = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = "MM/dd/yyyy HH:mm:ss", Width = 250 };
-            layout.Controls.Add(_dueDatePicker, 1, 1);
+            layout.Controls.Add(_dueDatePicker, 1, 2);
 
             // Recurring
-            layout.Controls.Add(new Label { Text = "Recurring:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Dock = DockStyle.Fill }, 0, 2);
+            layout.Controls.Add(new Label { Text = "Recurring:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Dock = DockStyle.Fill }, 0, 3);
             _recurringCheck = new CheckBox { Text = "Enable" };
             _recurringCheck.CheckedChanged += (s, e) => ToggleRecurring(_recurringCheck.Checked);
-            layout.Controls.Add(_recurringCheck, 1, 2);
-
-            // Recurrence Type
-            var recurTypePanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true };
-            recurTypePanel.Controls.Add(new Label { Text = "Type:" });
-            _recurrenceTypeCombo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 150 };
-            _recurrenceTypeCombo.Items.AddRange(new object[] { 
-                "Custom Interval", 
-                "On Computer Start", 
-                "On User Login", 
-                "On The Hour", 
-                "On App Launch" 
-            });
-            _recurrenceTypeCombo.SelectedIndex = 0;
-            _recurrenceTypeCombo.SelectedIndexChanged += (s, e) => ToggleIntervalControls();
-            recurTypePanel.Controls.Add(_recurrenceTypeCombo);
-            layout.Controls.Add(recurTypePanel, 1, 3);
+            layout.Controls.Add(_recurringCheck, 1, 3);
 
             // Recurrence Interval
             var recurPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true };
@@ -109,7 +98,7 @@ namespace SimpleReminders.Forms
 
             // Font Size
             layout.Controls.Add(new Label { Text = "Font Size:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Dock = DockStyle.Fill }, 0, 7);
-            _fontSizeNum = new NumericUpDown { Minimum = 8, Maximum = 72, Value = 11, Width = 60 };
+            _fontSizeNum = new NumericUpDown { Minimum = 8, Maximum = 72, Width = 60 };
             layout.Controls.Add(_fontSizeNum, 1, 7);
 
             // Sound
@@ -136,12 +125,11 @@ namespace SimpleReminders.Forms
 
         private void LoadData()
         {
+            _titleBox.Text = Reminder.Title;
             _messageBox.Text = Reminder.Message;
-            _dueDatePicker.Value = Reminder.DueDate > DateTime.Now ? Reminder.DueDate : DateTime.Now;
-            _recurringCheck.Checked = Reminder.IsRecurring;
+            _dueDatePicker.Value = Reminder.DueDate;
             
-            // Set recurrence type
-            _recurrenceTypeCombo.SelectedIndex = (int)Reminder.RecurrenceType;
+            _recurringCheck.Checked = Reminder.IsRecurring;
             
             if (Reminder.RecurrenceInterval.TotalMinutes > 0)
             {
@@ -161,17 +149,9 @@ namespace SimpleReminders.Forms
 
         private void ToggleRecurring(bool enabled)
         {
-            _recurrenceTypeCombo.Enabled = enabled;
-            _dueDatePicker.Enabled = !enabled; // Disable due date for recurring reminders
-            ToggleIntervalControls();
-        }
-
-        private void ToggleIntervalControls()
-        {
-            bool isCustomInterval = _recurrenceTypeCombo.SelectedIndex == 0 && _recurringCheck.Checked;
-            _daysNum.Enabled = isCustomInterval;
-            _hoursNum.Enabled = isCustomInterval;
-            _minutesNum.Enabled = isCustomInterval;
+            _daysNum.Enabled = enabled;
+            _hoursNum.Enabled = enabled;
+            _minutesNum.Enabled = enabled;
         }
 
         private void PickColor(Button btn, bool isBg)
@@ -209,10 +189,10 @@ namespace SimpleReminders.Forms
 
         private void SaveData()
         {
+            Reminder.Title = _titleBox.Text;
             Reminder.Message = _messageBox.Text;
             Reminder.DueDate = _dueDatePicker.Value;
             Reminder.IsRecurring = _recurringCheck.Checked;
-            Reminder.RecurrenceType = (RecurrenceType)_recurrenceTypeCombo.SelectedIndex;
             Reminder.RecurrenceInterval = new TimeSpan((int)_daysNum.Value, (int)_hoursNum.Value, (int)_minutesNum.Value, 0);
             Reminder.FontSize = (float)_fontSizeNum.Value;
             Reminder.BackgroundColor = ColorTranslator.ToHtml(_bgColorBtn.BackColor);

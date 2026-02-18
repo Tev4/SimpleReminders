@@ -12,7 +12,7 @@ namespace SimpleReminders.Services
     {
         private List<Reminder> _reminders;
         private readonly string _filePath;
-        private readonly System.Windows.Forms.Timer _timer; // UI Thread Timer
+        private System.Threading.Timer _timer;
 
         public event EventHandler<Reminder> ReminderDue;
 
@@ -23,13 +23,77 @@ namespace SimpleReminders.Services
             if (!Directory.Exists(appDir)) Directory.CreateDirectory(appDir);
             
             _filePath = Path.Combine(appDir, "reminders.json");
-            _reminders = LoadReminders();
 
-            // Check every minute
-            _timer = new System.Windows.Forms.Timer();
-            _timer.Interval = 60000;
-            _timer.Tick += CheckReminders;
-            _timer.Start();
+            _reminders = LoadReminders();
+            CatchUpReminders();
+            ScheduleNextReminder();
+        }
+
+       private void ScheduleNextReminder()
+        {
+            _timer?.Dispose();
+
+            if (!_reminders.Any())
+                return;
+
+            var now = DateTime.Now;
+
+            // Only consider reminders that are either:
+            // - recurring (always schedule next)
+            // - non-recurring and not passed
+            var nextReminder = _reminders
+                .Where(r => r.IsRecurring || !r.IsPassed)
+                .OrderBy(r => r.DueDate)
+                .FirstOrDefault();
+
+            if (nextReminder == null)
+                return;
+
+            var delay = nextReminder.DueDate - now;
+
+            // If the next reminder is still in the past for some reason (recurring), set 0
+            if (delay < TimeSpan.Zero)
+                delay = TimeSpan.Zero;
+
+            _timer = new System.Threading.Timer(
+                TimerElapsed,
+                null,
+                delay,
+                Timeout.InfiniteTimeSpan
+            );
+        }
+
+        private void CatchUpReminders()
+        {
+            var now = DateTime.Now;
+            bool updated = false;
+
+            foreach (var reminder in _reminders)
+            {
+                if (reminder.IsRecurring)
+                {
+                    // Fast-forward recurring reminders to the next due date in the future
+                    while (reminder.DueDate <= now)
+                    {
+                        reminder.DueDate = reminder.DueDate.Add(reminder.RecurrenceInterval);
+                        updated = true;
+                    }
+
+                    reminder.IsPassed = false; // recurring reminders are always upcoming
+                }
+                else
+                {
+                    // Mark non-recurring past reminders as passed
+                    if (reminder.DueDate <= now)
+                    {
+                        reminder.IsPassed = true;
+                        updated = true;
+                    }
+                }
+            }
+
+            if (updated)
+                SaveReminders();
         }
 
         private List<Reminder> LoadReminders()
@@ -58,6 +122,7 @@ namespace SimpleReminders.Services
         {
             _reminders.Add(reminder);
             SaveReminders();
+            ScheduleNextReminder();
         }
 
         public void Remove(Guid id)
@@ -67,6 +132,7 @@ namespace SimpleReminders.Services
             {
                 _reminders.Remove(r);
                 SaveReminders();
+                ScheduleNextReminder();
             }
         }
         
@@ -75,17 +141,24 @@ namespace SimpleReminders.Services
             var existing = _reminders.FirstOrDefault(x => x.Id == reminder.Id);
             if (existing != null)
             {
-                // We want to keep the same index? Typically "Update" means Modify in place.
-                // The previous code did remove + add ( append to end which is why it goes to bottom? No, wait)
-                // "New ones should go at the bottom"
-                // "Reminders are ordered by last edited/created" -> User wants drag/drop order.
-                
-                // If we want to preserve order on edit:
                 int index = _reminders.IndexOf(existing);
                 _reminders[index] = reminder;
+
+                // If the reminder is non-recurring and its DueDate is in the past, mark as passed
+                if (!reminder.IsRecurring && reminder.DueDate <= DateTime.Now)
+                {
+                    reminder.IsPassed = true;
+                }
+                else
+                {
+                    reminder.IsPassed = false;
+                }
+
                 SaveReminders();
+                ScheduleNextReminder();
             }
         }
+
 
         public void Move(int oldIndex, int newIndex)
         {
@@ -107,27 +180,43 @@ namespace SimpleReminders.Services
             }
         }
 
-        private void CheckReminders(object sender, EventArgs e)
+        private void TimerElapsed(object state)
         {
             var now = DateTime.Now;
-            // Find due reminders
-            var dueReminders = _reminders.Where(r => r.DueDate <= now).ToList();
+
+            // Only reminders that are due and actionable
+            var dueReminders = _reminders
+                .Where(r => r.DueDate <= now && (!r.IsPassed || r.IsRecurring))
+                .ToList();
 
             foreach (var reminder in dueReminders)
             {
-                ReminderDue?.Invoke(this, reminder);
+                // Only fire for actionable reminders
+                if (!reminder.IsPassed)
+                    ReminderDue?.Invoke(this, reminder);
 
                 if (reminder.IsRecurring)
                 {
-                    reminder.DueDate = now.Add(reminder.RecurrenceInterval);
+                    // Fast-forward to next occurrence
+                    while (reminder.DueDate <= now)
+                    {
+                        reminder.DueDate = reminder.DueDate.Add(reminder.RecurrenceInterval);
+                    }
+
+                    reminder.IsPassed = false; // recurring reminders are always active
                 }
                 else
                 {
-                    _reminders.Remove(reminder);
+                    // Non-recurring passed reminders: do not remove
+                    if (reminder.DueDate <= now && !reminder.IsRecurring)
+                        reminder.IsPassed = true;
                 }
             }
-            
-            if (dueReminders.Any()) SaveReminders();
+
+            if (dueReminders.Any())
+                SaveReminders();
+
+            ScheduleNextReminder(); // schedule next exact one
         }
     }
 }

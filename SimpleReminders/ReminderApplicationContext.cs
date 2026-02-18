@@ -14,12 +14,14 @@ namespace SimpleReminders
         private ReminderManager _reminderManager;
         private NotificationWindowManager _notificationWindowManager;
         private ManagerForm _managerForm;
+        private readonly Control _uiContext;
+
 
         public ReminderApplicationContext()
         {
             _reminderManager = new ReminderManager();
             _reminderManager.ReminderDue += OnReminderDue;
-            
+
             _notificationWindowManager = new NotificationWindowManager();
 
             _notifyIcon = new NotifyIcon
@@ -34,7 +36,13 @@ namespace SimpleReminders
             contextMenu.Items.Add("Exit", null, ExitApp);
             _notifyIcon.ContextMenuStrip = contextMenu;
             _notifyIcon.DoubleClick += ShowManager;
+
+            // ✅ Create a hidden control on the UI thread for marshaling
+            _uiContext = new Control();
+            _uiContext.CreateControl(); // creates handle, binds to UI thread
         }
+
+
 
         private void ShowManager(object sender, EventArgs e)
         {
@@ -59,18 +67,17 @@ namespace SimpleReminders
             Application.Exit();
         }
 
-        private async void OnReminderDue(object sender, Models.Reminder reminder)
+        private void OnReminderDue(object sender, Models.Reminder reminder)
         {
-            // Add small delay to stagger multiple notifications
-            await System.Threading.Tasks.Task.Delay(100);
-            
-            // Play Sound
-            PlaySound(reminder.SoundPath);
-            
-            // Show Notification
-            // Must be on UI thread
-            _notificationWindowManager.ShowNotification(reminder);
+            // Marshal to UI thread
+            _uiContext.BeginInvoke(new Action(() =>
+            {
+                PlaySound(reminder.SoundPath);
+                _notificationWindowManager.ShowNotification(reminder);
+            }));
         }
+
+
 
         private void PlaySound(string path)
         {

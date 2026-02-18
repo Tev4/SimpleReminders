@@ -40,8 +40,20 @@ namespace SimpleReminders.Forms
             // List
             _remindersList = new ListBox();
             _remindersList.Dock = DockStyle.Fill;
-            _remindersList.DisplayMember = "Message"; 
+            _remindersList.DisplayMember = "Title"; 
             _remindersList.AllowDrop = true;
+
+            // Grey out passed reminders
+            _remindersList.DrawMode = DrawMode.OwnerDrawFixed;
+            _remindersList.DrawItem += (s, e) =>
+            {
+                if (e.Index < 0) return;
+                var reminder = (Reminder)_remindersList.Items[e.Index];
+                e.DrawBackground();
+                var brush = reminder.IsPassed ? System.Drawing.Brushes.Gray : System.Drawing.Brushes.Black;
+                e.Graphics.DrawString(reminder.ToString(), e.Font, brush, e.Bounds);
+                e.DrawFocusRectangle();
+            };
             
             // Double-click to edit
             _remindersList.DoubleClick += (s, e) => {
@@ -136,7 +148,6 @@ namespace SimpleReminders.Forms
             foreach (var r in reminders)
             {
                 _remindersList.Items.Add(r); 
-                // Uses ToString() by default, we should override ToString in Reminder or perform mapping here
             }
         }
 
