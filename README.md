@@ -1,4 +1,4 @@
-#Simple Reminders
+# Simple Reminders
 
 This app allows you to create custom reminders (fixed or recurring) that trigger clickable notifications with customization options to let you decide how they will look and sound.
 By default it will run on startup, minimized to tray
