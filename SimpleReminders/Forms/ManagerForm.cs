@@ -80,6 +80,24 @@ namespace SimpleReminders.Forms
                 e.DrawFocusRectangle();
             };
 
+            //Custom drag and drop cursor
+            _remindersList.GiveFeedback += RemindersList_GiveFeedback;
+
+            void RemindersList_GiveFeedback(object sender, GiveFeedbackEventArgs e)
+            {
+                // Example: show the hand cursor when moving
+                if ((e.Effect & DragDropEffects.Move) == DragDropEffects.Move)
+                {
+                    Cursor.Current = Cursors.HSplit;
+                    e.UseDefaultCursors = false; // important: prevents default cursor
+                }
+                else
+                {
+                    Cursor.Current = Cursors.Default;
+                    e.UseDefaultCursors = true;
+                }
+            }
+
             _remindersList.DoubleClick += (s, e) =>
             {
                 // Get the index of the item that was clicked
