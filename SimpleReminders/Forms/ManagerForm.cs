@@ -24,6 +24,7 @@ namespace SimpleReminders.Forms
         private DoubleBufferedListBox _remindersList;
         private Button _addButton;
         private Button _editButton;
+        private Button _duplicateButton;
         private Button _deleteButton;
         private Button _debugButton;
         private int _dragInsertIndex = -1;
@@ -80,10 +81,16 @@ namespace SimpleReminders.Forms
                 e.DrawFocusRectangle();
             };
 
-            //Custom drag and drop cursor
-            _remindersList.GiveFeedback += RemindersList_GiveFeedback;
+            _remindersList.KeyDown += (s, e) =>
+            {
+                if (e.KeyCode == Keys.Delete)
+                {
+                    DeleteReminder(s, e);
+                }
+            };
 
-            void RemindersList_GiveFeedback(object sender, GiveFeedbackEventArgs e)
+            //Custom drag and drop cursor
+            _remindersList.GiveFeedback += (s, e) =>
             {
                 // Example: show the hand cursor when moving
                 if ((e.Effect & DragDropEffects.Move) == DragDropEffects.Move)
@@ -96,7 +103,7 @@ namespace SimpleReminders.Forms
                     Cursor.Current = Cursors.Default;
                     e.UseDefaultCursors = true;
                 }
-            }
+            };
 
             _remindersList.DoubleClick += (s, e) =>
             {
@@ -225,6 +232,9 @@ namespace SimpleReminders.Forms
             
             _editButton = new Button { Text = "Edit" };
             _editButton.Click += EditReminder;
+
+            _duplicateButton = new Button { Text = "Duplicate" };
+            _duplicateButton.Click += DuplicateReminder;
             
             _deleteButton = new Button { Text = "Delete" };
             _deleteButton.Click += DeleteReminder;
@@ -234,6 +244,7 @@ namespace SimpleReminders.Forms
 
             btnPanel.Controls.Add(_addButton);
             btnPanel.Controls.Add(_editButton);
+            btnPanel.Controls.Add(_duplicateButton);
             btnPanel.Controls.Add(_deleteButton);
             btnPanel.Controls.Add(_debugButton);
 
@@ -256,8 +267,18 @@ namespace SimpleReminders.Forms
             var form = new EditReminderForm();
             if (form.ShowDialog() == DialogResult.OK)
             {
+                // Store the index of the new reminder (after adding it to the manager)
                 _reminderManager.Add(form.Reminder);
                 RefreshList();
+
+                // Find the newly added reminder's index (or you could store it if needed)
+                int newIndex = _remindersList.Items.IndexOf(form.Reminder);
+                
+                // Select the newly added reminder
+                if (newIndex >= 0)
+                {
+                    _remindersList.SelectedIndex = newIndex;
+                }
             }
         }
 
@@ -265,11 +286,20 @@ namespace SimpleReminders.Forms
         {
             if (_remindersList.SelectedItem is Reminder reminder)
             {
+                // Store the index of the selected reminder before editing
+                int selectedIndex = _remindersList.SelectedIndex;
+
                 var form = new EditReminderForm(reminder);
                 if (form.ShowDialog() == DialogResult.OK)
                 {
                     _reminderManager.Update(form.Reminder);
-                    RefreshList();
+                    RefreshList();  // Refresh the list to show updated reminder
+
+                    // After the form closes, reselect the same item
+                    if (selectedIndex >= 0 && selectedIndex < _remindersList.Items.Count)
+                    {
+                        _remindersList.SelectedIndex = selectedIndex;
+                    }
                 }
             }
         }
@@ -291,6 +321,44 @@ namespace SimpleReminders.Forms
             if (_remindersList.SelectedItem is Reminder reminder)
             {
                 _reminderManager.TriggerReminder(reminder.Id);
+            }
+        }
+
+        private void DuplicateReminder(object sender, EventArgs e)
+        {
+            if (_remindersList.SelectedItem is Reminder selectedReminder)
+            {
+                // Store the index of the selected item before refreshing the list
+                int selectedIndex = _remindersList.SelectedIndex;
+
+                var duplicatedReminder = new Reminder
+                {
+                    Id = Guid.NewGuid(),
+
+                    Title = selectedReminder.Title,
+                    Message = selectedReminder.Message,
+                    BackgroundColor = selectedReminder.BackgroundColor,
+                    FontColor = selectedReminder.FontColor,
+                    FontSize = selectedReminder.FontSize,
+                    IsRecurring = selectedReminder.IsRecurring,
+                    RecurrenceInterval = selectedReminder.RecurrenceInterval,
+                    DueDate = selectedReminder.DueDate,
+                    IsPassed = selectedReminder.IsPassed,
+                    SoundPath = selectedReminder.SoundPath
+                };
+
+                _reminderManager.Add(duplicatedReminder);
+                RefreshList();
+
+                // Ensure the same item is selected (if it still exists in the list)
+                if (selectedIndex >= 0 && selectedIndex < _remindersList.Items.Count)
+                {
+                    _remindersList.SelectedIndex = selectedIndex;
+                }
+            }
+            else
+            {
+                MessageBox.Show("No reminder selected to duplicate.");
             }
         }
 

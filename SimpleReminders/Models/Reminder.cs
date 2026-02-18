@@ -2,16 +2,6 @@ using System;
 
 namespace SimpleReminders.Models
 {
-    public enum RecurrenceType
-    {
-        None,
-        CustomInterval,
-        OnComputerStart,
-        OnUserLogin,
-        OnTheHour,
-        OnAppLaunch
-    }
-
     public class Reminder
     {
         public Guid Id { get; set; } = Guid.NewGuid();

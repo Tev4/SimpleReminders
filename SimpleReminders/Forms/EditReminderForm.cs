@@ -116,6 +116,12 @@ namespace SimpleReminders.Forms
             _cancelButton = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel };
             _saveButton = new Button { Text = "Save", DialogResult = DialogResult.OK };
 
+            _saveButton.Click += (s, e) =>
+            {
+                SaveData();
+                this.Close();
+            };
+
             // Button is disabled if title is empty
             _titleBox.TextChanged += (s, e) =>
             {
