@@ -55,63 +55,6 @@ namespace SimpleReminders.Forms
                 e.DrawFocusRectangle();
             };
             
-            // Double-click to edit
-            _remindersList.DoubleClick += (s, e) => {
-                if (_remindersList.SelectedItem is Reminder reminder)
-                {
-                    var form = new EditReminderForm(reminder);
-                    if (form.ShowDialog() == DialogResult.OK)
-                    {
-                        _reminderManager.Update(form.Reminder);
-                        RefreshList();
-                    }
-                }
-            };
-            
-            _remindersList.MouseDown += (s, e) => {
-                if (_remindersList.SelectedItem == null) return;
-                _remindersList.Cursor = Cursors.Hand;
-                _remindersList.DoDragDrop(_remindersList.SelectedItem, DragDropEffects.Move);
-                _remindersList.Cursor = Cursors.Default;
-            };
-            
-            _remindersList.DragOver += (s, e) => {
-                e.Effect = DragDropEffects.Move;
-                // Draw drop indicator line
-                Point point = _remindersList.PointToClient(new System.Drawing.Point(e.X, e.Y));
-                int index = _remindersList.IndexFromPoint(point);
-                _remindersList.Invalidate(); // Trigger repaint to show drop line
-            };
-            
-            _remindersList.DragDrop += (s, e) => {
-                Point point = _remindersList.PointToClient(new System.Drawing.Point(e.X, e.Y));
-                int index = _remindersList.IndexFromPoint(point);
-                if (index < 0) index = _remindersList.Items.Count - 1;
-                
-                if (e.Data.GetDataPresent(typeof(Reminder)))
-                {
-                    Reminder r = (Reminder)e.Data.GetData(typeof(Reminder));
-                    
-                   int oldIndex = -1;
-                    for(int i=0; i<_remindersList.Items.Count; i++)
-                    {
-                        if (((Reminder)_remindersList.Items[i]).Id == r.Id) 
-                        {
-                            oldIndex = i; 
-                            break;
-                        }
-                    }
-
-                    if (oldIndex != index && oldIndex != -1 && index != -1)
-                    {
-                        _reminderManager.Move(oldIndex, index);
-                        RefreshList();
-                        _remindersList.SelectedIndex = index;
-                    }
-                }
-                _remindersList.Invalidate();
-            };
-            
             layout.Controls.Add(_remindersList, 0, 0);
 
             // Buttons
