@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-// using System.Timers; // Removed to avoid conflict, switched to Windows.Forms.Timer
 using SimpleReminders.Models;
 
 namespace SimpleReminders.Services
@@ -12,9 +11,9 @@ namespace SimpleReminders.Services
     {
         private List<Reminder> _reminders;
         private readonly string _filePath;
-        private System.Threading.Timer _timer;
+        private System.Threading.Timer? _timer;
 
-        public event EventHandler<Reminder> ReminderDue;
+        public event EventHandler<Reminder>? ReminderDue;
 
         public ReminderManager()
         {
@@ -38,9 +37,6 @@ namespace SimpleReminders.Services
 
             var now = DateTime.Now;
 
-            // Only consider reminders that are either:
-            // - recurring (always schedule next)
-            // - non-recurring and not passed
             var nextReminder = _reminders
                 .Where(r => r.IsRecurring || !r.IsPassed)
                 .OrderBy(r => r.DueDate)
@@ -79,11 +75,10 @@ namespace SimpleReminders.Services
                         updated = true;
                     }
 
-                    reminder.IsPassed = false; // recurring reminders are always upcoming
+                    reminder.IsPassed = false;
                 }
                 else
                 {
-                    // Mark non-recurring past reminders as passed
                     if (reminder.DueDate <= now)
                     {
                         reminder.IsPassed = true;
@@ -104,7 +99,7 @@ namespace SimpleReminders.Services
                 string json = File.ReadAllText(_filePath);
                 return JsonSerializer.Deserialize<List<Reminder>>(json) ?? new List<Reminder>();
             }
-            catch
+            catch 
             {
                 return new List<Reminder>();
             }
@@ -144,7 +139,6 @@ namespace SimpleReminders.Services
                 int index = _reminders.IndexOf(existing);
                 _reminders[index] = reminder;
 
-                // If the reminder is non-recurring and its DueDate is in the past, mark as passed
                 if (!reminder.IsRecurring && reminder.DueDate <= DateTime.Now)
                 {
                     reminder.IsPassed = true;
@@ -180,18 +174,16 @@ namespace SimpleReminders.Services
             }
         }
 
-        private void TimerElapsed(object state)
+        private void TimerElapsed(object? state)
         {
             var now = DateTime.Now;
 
-            // Only reminders that are due and actionable
             var dueReminders = _reminders
                 .Where(r => r.DueDate <= now && (!r.IsPassed || r.IsRecurring))
                 .ToList();
 
             foreach (var reminder in dueReminders)
             {
-                // Only fire for actionable reminders
                 if (!reminder.IsPassed)
                     ReminderDue?.Invoke(this, reminder);
 
@@ -203,20 +195,19 @@ namespace SimpleReminders.Services
                         reminder.DueDate = reminder.DueDate.Add(reminder.RecurrenceInterval);
                     }
 
-                    reminder.IsPassed = false; // recurring reminders are always active
+                    reminder.IsPassed = false;
                 }
                 else
                 {
-                    // Non-recurring passed reminders: do not remove
                     if (reminder.DueDate <= now && !reminder.IsRecurring)
                         reminder.IsPassed = true;
                 }
             }
 
-            if (dueReminders.Any())
+            if (dueReminders.Count != 0)
                 SaveReminders();
 
-            ScheduleNextReminder(); // schedule next exact one
+            ScheduleNextReminder();
         }
     }
 }

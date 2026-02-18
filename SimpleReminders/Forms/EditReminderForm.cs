@@ -10,22 +10,22 @@ namespace SimpleReminders.Forms
         public Reminder Reminder { get; private set; }
         private readonly bool _isNew;
 
-        private TextBox _titleBox;
-        private TextBox _messageBox;
-        private CheckBox _recurringCheck;
-        private NumericUpDown _daysNum;
-        private NumericUpDown _hoursNum;
-        private NumericUpDown _minutesNum;
-        private Button _bgColorBtn;
-        private Button _fontColorBtn;
-        private NumericUpDown _fontSizeNum;
-        private DateTimePicker _dueDatePicker;
-        private Button _soundBtn;
-        private Label _soundLabel;
-        private Button _saveButton;
-        private Button _cancelButton;
+        private TextBox _titleBox = null!;
+        private TextBox _messageBox = null!;
+        private CheckBox _recurringCheck = null!;
+        private NumericUpDown _daysNum = null!;
+        private NumericUpDown _hoursNum = null!;
+        private NumericUpDown _minutesNum = null!;
+        private Button _bgColorBtn = null!;
+        private Button _fontColorBtn = null!;
+        private NumericUpDown _fontSizeNum = null!;
+        private DateTimePicker _dueDatePicker = null!;
+        private Button _soundBtn = null!;
+        private Label _soundLabel = null!;
+        private Button _saveButton = null!;
+        private Button _cancelButton = null!;
 
-        public EditReminderForm(Reminder reminder = null)
+        public EditReminderForm(Reminder? reminder = null)
         {
             _isNew = reminder == null;
             Reminder = reminder ?? new Reminder();
@@ -211,7 +211,7 @@ namespace SimpleReminders.Forms
             Reminder.FontSize = (float)_fontSizeNum.Value;
             Reminder.BackgroundColor = ColorTranslator.ToHtml(_bgColorBtn.BackColor);
             Reminder.FontColor = ColorTranslator.ToHtml(_fontColorBtn.BackColor);
-            // SoundPath is already updated in PickSound/Remidner object reference
+            // SoundPath is already updated in PickSound/Reminder object reference
         }
     }
 }

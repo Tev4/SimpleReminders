@@ -13,9 +13,8 @@ namespace SimpleReminders
         private NotifyIcon _notifyIcon;
         private ReminderManager _reminderManager;
         private NotificationWindowManager _notificationWindowManager;
-        private ManagerForm _managerForm;
+        private ManagerForm? _managerForm;
         private readonly Control _uiContext;
-
 
         public ReminderApplicationContext()
         {
@@ -37,14 +36,12 @@ namespace SimpleReminders
             _notifyIcon.ContextMenuStrip = contextMenu;
             _notifyIcon.DoubleClick += ShowManager;
 
-            // ✅ Create a hidden control on the UI thread for marshaling
+            // Create a hidden control on the UI thread for marshaling
             _uiContext = new Control();
-            _uiContext.CreateControl(); // creates handle, binds to UI thread
+            _uiContext.CreateControl();
         }
 
-
-
-        private void ShowManager(object sender, EventArgs e)
+        private void ShowManager(object? sender, EventArgs e)
         {
             if (_managerForm == null || _managerForm.IsDisposed)
             {
@@ -61,13 +58,13 @@ namespace SimpleReminders
             }
         }
 
-        private void ExitApp(object sender, EventArgs e)
+        private void ExitApp(object? sender, EventArgs e)
         {
             _notifyIcon.Visible = false;
             Application.Exit();
         }
 
-        private void OnReminderDue(object sender, Models.Reminder reminder)
+        private void OnReminderDue(object? sender, Models.Reminder reminder)
         {
             // Marshal to UI thread
             _uiContext.BeginInvoke(new Action(() =>
@@ -77,31 +74,22 @@ namespace SimpleReminders
             }));
         }
 
-
-
-        private void PlaySound(string path)
+        private static void PlaySound(string path)
         {
             try
             {
                 if (!string.IsNullOrEmpty(path) && File.Exists(path))
                 {
-                    using (var player = new SoundPlayer(path))
-                    {
-                        player.Play();
-                    }
+                    using var player = new SoundPlayer(path);
+                    player.Play();
                 }
                 else
                 {
-                     // specific request: "Default Windows Notification Sound that can be modified by the user"
-                     // If no path is set, or invalid, play default.
-                     // The user request says "Default Windows Notification Sound", usually "Windows Notify Messaging.wav"
-                     // We can try to play a system sound.
                      SystemSounds.Exclamation.Play();
                 }
             }
             catch 
             {
-                // Fallback
                 SystemSounds.Beep.Play();
             }
         }

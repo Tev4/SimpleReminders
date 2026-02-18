@@ -21,14 +21,13 @@ namespace SimpleReminders.Forms
     public class ManagerForm : Form
     {
         private readonly ReminderManager _reminderManager;
-        private DoubleBufferedListBox _remindersList;
-        private Button _addButton;
-        private Button _editButton;
-        private Button _duplicateButton;
-        private Button _deleteButton;
-        private Button _debugButton;
+        private DoubleBufferedListBox _remindersList = null!;
+        private Button _addButton = null!;
+        private Button _editButton = null!;
+        private Button _duplicateButton = null!;
+        private Button _deleteButton = null!;
+        private Button _debugButton = null!;
         private int _dragInsertIndex = -1;
-
 
         public ManagerForm(ReminderManager reminderManager)
         {
@@ -66,19 +65,16 @@ namespace SimpleReminders.Forms
                 e.DrawBackground();
 
                 var brush = reminder.IsPassed ? System.Drawing.Brushes.Gray : System.Drawing.Brushes.Black;
-                e.Graphics.DrawString(reminder.ToString(), e.Font, brush, e.Bounds);
+                e.Graphics.DrawString(reminder.ToString(), e.Font!, brush, e.Bounds);
                 
                 // Draw insert line if dragging over this index
                 if (_dragInsertIndex == e.Index)
                 {
                     int lineY = e.Bounds.Top;
-                    using (var pen = new System.Drawing.Pen(System.Drawing.Color.Black, 1))
-                    {
-                        e.Graphics.DrawLine(pen, e.Bounds.Left, lineY, e.Bounds.Right, lineY);
-                    }
+                    using var pen = new System.Drawing.Pen(System.Drawing.Color.Black, 1);
+                    e.Graphics.DrawLine(pen, e.Bounds.Left, lineY, e.Bounds.Right, lineY);
+                    e.DrawFocusRectangle();
                 }
-
-                e.DrawFocusRectangle();
             };
 
             _remindersList.KeyDown += (s, e) =>
@@ -92,7 +88,6 @@ namespace SimpleReminders.Forms
             //Custom drag and drop cursor
             _remindersList.GiveFeedback += (s, e) =>
             {
-                // Example: show the hand cursor when moving
                 if ((e.Effect & DragDropEffects.Move) == DragDropEffects.Move)
                 {
                     Cursor.Current = Cursors.HSplit;
@@ -107,10 +102,8 @@ namespace SimpleReminders.Forms
 
             _remindersList.DoubleClick += (s, e) =>
             {
-                // Get the index of the item that was clicked
                 int index = _remindersList.IndexFromPoint(_remindersList.PointToClient(Cursor.Position));
 
-                // Only edit if the clicked item is the currently selected item
                 if (index >= 0 && index == _remindersList.SelectedIndex)
                 {
                     EditReminder(s, e);
@@ -125,7 +118,6 @@ namespace SimpleReminders.Forms
             {
                 int index = _remindersList.IndexFromPoint(e.Location);
 
-                // Unselect if clicked on empty space
                 if (index < 0)
                 {
                     _remindersList.ClearSelected();
@@ -143,7 +135,6 @@ namespace SimpleReminders.Forms
                 if (_mouseDownLocation == Point.Empty)
                     return;
 
-                // Calculate distance moved
                 int dx = Math.Abs(e.X - _mouseDownLocation.X);
                 int dy = Math.Abs(e.Y - _mouseDownLocation.Y);
 
@@ -161,7 +152,6 @@ namespace SimpleReminders.Forms
 
             _remindersList.MouseUp += (s, e) =>
             {
-                // Reset mouse down location on mouse release
                 _mouseDownLocation = Point.Empty;
             };
 
@@ -195,10 +185,9 @@ namespace SimpleReminders.Forms
                 }
             };
 
-            // DragDrop: handle the drop logic
             _remindersList.DragDrop += (s, e) =>
             {
-                if (e.Data.GetData(typeof(Reminder)) is Reminder draggedReminder)
+                if (e.Data?.GetData(typeof(Reminder)) is Reminder draggedReminder)
                 {
                     int oldIndex = _remindersList.Items.IndexOf(draggedReminder);
                     int targetIndex = _dragInsertIndex;
@@ -223,7 +212,7 @@ namespace SimpleReminders.Forms
 
             // Buttons
             var btnPanel = new FlowLayoutPanel();
-            btnPanel.Dock = DockStyle.Top; // Changed from Fill to make AutoSize logic cleaner
+            btnPanel.Dock = DockStyle.Top;
             btnPanel.AutoSize = true;
             btnPanel.FlowDirection = FlowDirection.LeftToRight;
 
@@ -262,16 +251,16 @@ namespace SimpleReminders.Forms
             }
         }
 
-        private void AddReminder(object sender, EventArgs e)
+        private void AddReminder(object? sender, EventArgs e)
         {
             var form = new EditReminderForm();
             if (form.ShowDialog() == DialogResult.OK)
             {
-                // Store the index of the new reminder (after adding it to the manager)
+                // Store the index of the new reminder
                 _reminderManager.Add(form.Reminder);
                 RefreshList();
 
-                // Find the newly added reminder's index (or you could store it if needed)
+                // Find the newly added reminder's index
                 int newIndex = _remindersList.Items.IndexOf(form.Reminder);
                 
                 // Select the newly added reminder
@@ -282,7 +271,7 @@ namespace SimpleReminders.Forms
             }
         }
 
-        private void EditReminder(object sender, EventArgs e)
+        private void EditReminder(object? sender, EventArgs e)
         {
             if (_remindersList.SelectedItem is Reminder reminder)
             {
@@ -293,7 +282,7 @@ namespace SimpleReminders.Forms
                 if (form.ShowDialog() == DialogResult.OK)
                 {
                     _reminderManager.Update(form.Reminder);
-                    RefreshList();  // Refresh the list to show updated reminder
+                    RefreshList();
 
                     // After the form closes, reselect the same item
                     if (selectedIndex >= 0 && selectedIndex < _remindersList.Items.Count)
@@ -302,9 +291,13 @@ namespace SimpleReminders.Forms
                     }
                 }
             }
+            else
+            {
+                MessageBox.Show("No reminder selected to edit.");
+            }
         }
 
-        private void DeleteReminder(object sender, EventArgs e)
+        private void DeleteReminder(object? sender, EventArgs e)
         {
             if (_remindersList.SelectedItem is Reminder reminder)
             {
@@ -314,9 +307,13 @@ namespace SimpleReminders.Forms
                     RefreshList();
                 }
             }
+            else
+            {
+                MessageBox.Show("No reminder selected to delete.");
+            }
         }
 
-        private void TriggerDebug(object sender, EventArgs e)
+        private void TriggerDebug(object? sender, EventArgs e)
         {
             if (_remindersList.SelectedItem is Reminder reminder)
             {
@@ -324,7 +321,7 @@ namespace SimpleReminders.Forms
             }
         }
 
-        private void DuplicateReminder(object sender, EventArgs e)
+        private void DuplicateReminder(object? sender, EventArgs e)
         {
             if (_remindersList.SelectedItem is Reminder selectedReminder)
             {
@@ -350,7 +347,7 @@ namespace SimpleReminders.Forms
                 _reminderManager.Add(duplicatedReminder);
                 RefreshList();
 
-                // Ensure the same item is selected (if it still exists in the list)
+                // Ensure the same item is selected
                 if (selectedIndex >= 0 && selectedIndex < _remindersList.Items.Count)
                 {
                     _remindersList.SelectedIndex = selectedIndex;

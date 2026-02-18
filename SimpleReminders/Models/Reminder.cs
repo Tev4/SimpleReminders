@@ -9,13 +9,13 @@ namespace SimpleReminders.Models
         public string Message { get; set; } = string.Empty;
         
         // Customization
-        public string BackgroundColor { get; set; } = "#005FB8"; // Default blue
-        public string FontColor { get; set; } = "#FFFFFF"; // Default white
+        public string BackgroundColor { get; set; } = "#005FB8";
+        public string FontColor { get; set; } = "#FFFFFF"; 
         public float FontSize { get; set; } = 14f;
         
         // Recurrence
         public bool IsRecurring { get; set; }
-        public TimeSpan RecurrenceInterval { get; set; } // For custom recurring intervals
+        public TimeSpan RecurrenceInterval { get; set; }
         
         // Scheduling
         public DateTime DueDate { get; set; }
@@ -24,16 +24,9 @@ namespace SimpleReminders.Models
         public bool IsPassed { get; set; } = false;
         
         // Sound
-        public string SoundPath { get; set; } // Path to custom sound or null for default
+        public string SoundPath { get; set; } = string.Empty; // Path to custom sound or null for default
 
         public Reminder() { }
-
-        public Reminder(string title, string message, DateTime dueDate)
-        {
-            Title = title;
-            Message = message;
-            DueDate = dueDate;
-        }
 
         public override string ToString()
         {
