@@ -15,9 +15,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="SimpleReminders.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <EmbeddedResource Include="SimpleReminders.ico" />
   </ItemGroup>
 
 </Project>

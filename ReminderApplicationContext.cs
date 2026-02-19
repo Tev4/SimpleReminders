@@ -5,6 +5,7 @@ using System.IO;
 using System.Media;
 using SimpleReminders.Services;
 using SimpleReminders.Forms;
+using System.Reflection;
 
 namespace SimpleReminders
 {
@@ -40,7 +41,7 @@ namespace SimpleReminders
 
             _notifyIcon = new NotifyIcon
             {
-                Icon = File.Exists("SimpleReminders.ico") ? new Icon("SimpleReminders.ico") : SystemIcons.Application,
+                Icon = IconService.AppIcon,
                 Visible = true,
                 Text = "Simple Reminders"
             };

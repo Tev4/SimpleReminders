@@ -47,7 +47,7 @@ namespace SimpleReminders.Forms
         private void InitializeComponent()
         {
             this.Text = "Manage Reminders";
-            if (File.Exists("SimpleReminders.ico")) this.Icon = new Icon("SimpleReminders.ico");
+            this.Icon = IconService.AppIcon;
             this.Size = new System.Drawing.Size(500, 500);
             this.StartPosition = FormStartPosition.CenterScreen;
             
@@ -73,7 +73,9 @@ namespace SimpleReminders.Forms
                 var reminder = (Reminder)_remindersList.Items[e.Index];
                 e.DrawBackground();
 
-                var brush = reminder.IsPassed ? System.Drawing.Brushes.Gray : System.Drawing.Brushes.Black;
+                var brush = (e.State & DrawItemState.Selected) == DrawItemState.Selected 
+                    ? System.Drawing.Brushes.White 
+                    : (reminder.IsPassed ? System.Drawing.Brushes.Gray : System.Drawing.Brushes.Black);
                 e.Graphics.DrawString(reminder.ToString(), e.Font!, brush, e.Bounds);
                 
                 // Draw insert line if dragging over this index
