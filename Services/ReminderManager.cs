@@ -58,37 +58,57 @@ namespace SimpleReminders.Services
                 Timeout.InfiniteTimeSpan
             );
         }
-
         private void CatchUpReminders()
         {
-            var now = DateTime.Now;
-            bool updated = false;
-
             foreach (var reminder in _reminders)
             {
-                if (reminder.IsRecurring)
-                {
-                    // Fast-forward recurring reminders to the next due date in the future
-                    while (reminder.DueDate <= now)
-                    {
-                        reminder.DueDate = reminder.DueDate.Add(reminder.RecurrenceInterval);
-                        updated = true;
-                    }
+                EnsureValidNextOccurrence(reminder);
+            }
 
-                    reminder.IsPassed = false;
+            SaveReminders();
+        }
+
+        private void EnsureValidNextOccurrence(Reminder reminder)
+        {
+            var now = DateTime.Now;
+            if (reminder.IsRecurring)
+            {
+                // Special case: if interval is 0, we can't move forward
+                if (reminder.RecurrenceInterval <= TimeSpan.Zero) return;
+
+                // Move forward if DueDate is in the past OR if it's not on an enabled day
+                int attempts = 0;
+                while (attempts < 100000)
+                {
+                    bool isPast = reminder.DueDate <= now;
+                    bool isDayDisabled = reminder.EnabledDays != null && 
+                                        reminder.EnabledDays.Count > 0 && 
+                                        !reminder.EnabledDays.Contains(reminder.DueDate.DayOfWeek);
+
+                    if (isPast || isDayDisabled)
+                    {
+                        reminder.DueDate = CalculateNextDueDate(reminder, reminder.DueDate);
+                        attempts++;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                
+                reminder.IsPassed = false;
+            }
+            else
+            {
+                if (reminder.DueDate <= now)
+                {
+                    reminder.IsPassed = true;
                 }
                 else
                 {
-                    if (reminder.DueDate <= now)
-                    {
-                        reminder.IsPassed = true;
-                        updated = true;
-                    }
+                    reminder.IsPassed = false;
                 }
             }
-
-            if (updated)
-                SaveReminders();
         }
 
         private List<Reminder> LoadReminders()
@@ -115,6 +135,7 @@ namespace SimpleReminders.Services
 
         public void Add(Reminder reminder)
         {
+            EnsureValidNextOccurrence(reminder);
             _reminders.Add(reminder);
             SaveReminders();
             ScheduleNextReminder();
@@ -137,16 +158,11 @@ namespace SimpleReminders.Services
             if (existing != null)
             {
                 int index = _reminders.IndexOf(existing);
+                
+                // Ensure the new settings are valid (e.g. DueDate is moved if today was just disabled)
+                EnsureValidNextOccurrence(reminder);
+                
                 _reminders[index] = reminder;
-
-                if (!reminder.IsRecurring && reminder.DueDate <= DateTime.Now)
-                {
-                    reminder.IsPassed = true;
-                }
-                else
-                {
-                    reminder.IsPassed = false;
-                }
 
                 SaveReminders();
                 ScheduleNextReminder();
@@ -184,7 +200,12 @@ namespace SimpleReminders.Services
 
             foreach (var reminder in dueReminders)
             {
-                if (!reminder.IsPassed)
+                // Double check enabled days before triggering (extra safety)
+                bool isDayEnabled = reminder.EnabledDays == null || 
+                                   reminder.EnabledDays.Count == 0 || 
+                                   reminder.EnabledDays.Contains(now.DayOfWeek);
+
+                if (!reminder.IsPassed && isDayEnabled)
                     ReminderDue?.Invoke(this, reminder);
 
                 if (reminder.IsRecurring)
@@ -192,7 +213,7 @@ namespace SimpleReminders.Services
                     // Fast-forward to next occurrence
                     while (reminder.DueDate <= now)
                     {
-                        reminder.DueDate = reminder.DueDate.Add(reminder.RecurrenceInterval);
+                        reminder.DueDate = CalculateNextDueDate(reminder, reminder.DueDate);
                     }
 
                     reminder.IsPassed = false;
@@ -208,6 +229,27 @@ namespace SimpleReminders.Services
                 SaveReminders();
 
             ScheduleNextReminder();
+        }
+
+        private DateTime CalculateNextDueDate(Reminder reminder, DateTime fromDate)
+        {
+            var next = fromDate.Add(reminder.RecurrenceInterval);
+            if (reminder.EnabledDays == null || reminder.EnabledDays.Count == 0)
+                return next;
+
+            // Safety break to prevent infinite loops (e.g., if interval is 0)
+            if (reminder.RecurrenceInterval <= TimeSpan.Zero)
+                return next;
+
+            int attempts = 0;
+            // Keep adding interval until we hit an enabled day
+            // We limit attempts to 100,000 to prevent long freezes for very small intervals
+            while (!reminder.EnabledDays.Contains(next.DayOfWeek) && attempts < 100000)
+            {
+                next = next.Add(reminder.RecurrenceInterval);
+                attempts++;
+            }
+            return next;
         }
     }
 }

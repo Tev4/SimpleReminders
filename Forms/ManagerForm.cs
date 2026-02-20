@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Windows.Forms;
@@ -77,6 +78,17 @@ namespace SimpleReminders.Forms
                     ? System.Drawing.Brushes.White 
                     : (reminder.IsPassed ? System.Drawing.Brushes.Gray : System.Drawing.Brushes.Black);
                 e.Graphics.DrawString(reminder.ToString(), e.Font!, brush, e.Bounds);
+
+                // Draw days info on the right
+                string daysText = GetDaysDisplayString(reminder);
+                if (!string.IsNullOrEmpty(daysText))
+                {
+                    var size = e.Graphics.MeasureString(daysText, e.Font!);
+                    // Right-aligned with a small margin
+                    float x = e.Bounds.Right - size.Width - 10;
+                    float y = e.Bounds.Y + (e.Bounds.Height - size.Height) / 2;
+                    e.Graphics.DrawString(daysText, e.Font!, brush, x, y);
+                }
                 
                 // Draw insert line if dragging over this index
                 if (_dragInsertIndex == e.Index)
@@ -385,9 +397,12 @@ namespace SimpleReminders.Forms
                     BackgroundColor = selectedReminder.BackgroundColor,
                     FontColor = selectedReminder.FontColor,
                     FontSize = selectedReminder.FontSize,
+                    Width = selectedReminder.Width,
+                    Height = selectedReminder.Height,
                     IsRecurring = selectedReminder.IsRecurring,
                     RecurrenceInterval = selectedReminder.RecurrenceInterval,
                     DueDate = selectedReminder.DueDate,
+                    EnabledDays = new List<DayOfWeek>(selectedReminder.EnabledDays),
                     IsPassed = selectedReminder.IsPassed,
                     SoundPath = selectedReminder.SoundPath
                 };
@@ -415,6 +430,28 @@ namespace SimpleReminders.Forms
                 this.Hide();
             }
             base.OnFormClosing(e);
+        }
+
+        private string GetDaysDisplayString(Reminder reminder)
+        {
+            if (!reminder.IsRecurring || reminder.EnabledDays == null || reminder.EnabledDays.Count == 0)
+                return string.Empty;
+
+            if (reminder.EnabledDays.Count == 7)
+                return "(Every day)";
+
+            var dayMap = new System.Collections.Generic.Dictionary<DayOfWeek, string>
+            {
+                { DayOfWeek.Monday, "Mo" }, { DayOfWeek.Tuesday, "Tu" }, { DayOfWeek.Wednesday, "We" },
+                { DayOfWeek.Thursday, "Th" }, { DayOfWeek.Friday, "Fr" }, { DayOfWeek.Saturday, "Sa" },
+                { DayOfWeek.Sunday, "Su" }
+            };
+
+            var orderedDays = reminder.EnabledDays
+                .OrderBy(d => (int)d == 0 ? 7 : (int)d) // Mon-Sun order
+                .Select(d => dayMap[d]);
+
+            return string.Join(", ", orderedDays);
         }
     }
 }

@@ -39,7 +39,10 @@ namespace SimpleReminders.Forms
             _dismissButton.UseCompatibleTextRendering = false; // Use GDI+ for emoji rendering
             
             // Calculate Size
-            Size fixedSize = new Size(250, 0);
+            int preferredWidth = reminder.Width > 0 ? reminder.Width : 250;
+            int preferredHeight = reminder.Height > 0 ? reminder.Height : 0; // 0 means auto-calculate if not set
+
+            Size fixedSize = new Size(preferredWidth, 0);
             Size textSize = TextRenderer.MeasureText(
                 reminder.Message, 
                 _dismissButton.Font, 
@@ -47,9 +50,9 @@ namespace SimpleReminders.Forms
                 TextFormatFlags.WordBreak | TextFormatFlags.VerticalCenter | TextFormatFlags.HorizontalCenter
             );
 
-            // Minimum height 80, add padding
-            int height = Math.Max(80, textSize.Height + 40);
-            this.Size = new Size(250, height);
+            // Minimum height 80 or user defined, add padding
+            int height = preferredHeight > 0 ? preferredHeight : Math.Max(80, textSize.Height + 40);
+            this.Size = new Size(preferredWidth, height);
             
             _dismissButton.Click += (s, e) => {
                 this.Close();
