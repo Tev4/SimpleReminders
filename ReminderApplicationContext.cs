@@ -56,6 +56,9 @@ namespace SimpleReminders
             _uiContext = new Control();
             _uiContext.CreateControl();
 
+            // Initialize after dependencies (uiContext, notificationWindowManager) are ready
+            _reminderManager.Initialize();
+
             // Show manager if not starting minimized
             if (!_settingsService.Settings.StartMinimized)
             {

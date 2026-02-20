@@ -24,6 +24,10 @@ namespace SimpleReminders.Services
             _filePath = Path.Combine(appDir, "reminders.json");
 
             _reminders = LoadReminders();
+        }
+
+        public void Initialize()
+        {
             CatchUpReminders();
             ScheduleNextReminder();
         }
@@ -60,12 +64,30 @@ namespace SimpleReminders.Services
         }
         private void CatchUpReminders()
         {
+            var now = DateTime.Now;
+            bool triggerAny = false;
+
             foreach (var reminder in _reminders)
             {
+                // If the reminder is in the past and NOT marked as passed, it's a missed occurrence
+                if (reminder.DueDate <= now && !reminder.IsPassed)
+                {
+                    // Trigger it instantly only if it triggers once a day or less (interval >= 1 day)
+                    // or if it's a one-time reminder.
+                    bool isDailyOrLessFrequent = !reminder.IsRecurring || reminder.RecurrenceInterval.TotalDays >= 1;
+
+                    if (isDailyOrLessFrequent)
+                    {
+                        ReminderDue?.Invoke(this, reminder);
+                        triggerAny = true;
+                    }
+                }
+
                 EnsureValidNextOccurrence(reminder);
             }
 
-            SaveReminders();
+            if (triggerAny)
+                SaveReminders();
         }
 
         private void EnsureValidNextOccurrence(Reminder reminder)
@@ -159,7 +181,7 @@ namespace SimpleReminders.Services
             {
                 int index = _reminders.IndexOf(existing);
                 
-                // Ensure the new settings are valid (e.g. DueDate is moved if today was just disabled)
+                // Ensure the new settings are valid
                 EnsureValidNextOccurrence(reminder);
                 
                 _reminders[index] = reminder;

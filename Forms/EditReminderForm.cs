@@ -132,8 +132,30 @@ namespace SimpleReminders.Forms
             _specificDaysCheck = new CheckBox { Text = "Enable selection" };
             _specificDaysCheck.CheckedChanged += (s, e) => 
             {
-                _daysPanel.Enabled = _specificDaysCheck.Checked;
-                if (!_specificDaysCheck.Checked)
+                bool specEnabled = _specificDaysCheck.Checked;
+                
+                // If specific days is enabled, Recurring MUST be enabled
+                if (specEnabled && !_recurringCheck.Checked)
+                {
+                    _recurringCheck.Checked = true;
+                }
+
+                _daysPanel.Enabled = specEnabled;
+                
+                // Disable interval if specific days are enabled
+                _daysNum.Enabled = !specEnabled && _recurringCheck.Checked;
+                _hoursNum.Enabled = !specEnabled && _recurringCheck.Checked;
+                _minutesNum.Enabled = !specEnabled && _recurringCheck.Checked;
+
+                if (specEnabled)
+                {
+                    // By default, if specific days is enabled, we expect 1 day interval
+                    // so it checks the next day for the enabled day list.
+                    _daysNum.Value = 1;
+                    _hoursNum.Value = 0;
+                    _minutesNum.Value = 0;
+                }
+                else
                 {
                     foreach (var cb in _dayCheckboxes) cb.Checked = false;
                 }
@@ -282,11 +304,21 @@ namespace SimpleReminders.Forms
 
         private void ToggleRecurring(bool enabled)
         {
-            _daysNum.Enabled = enabled;
-            _hoursNum.Enabled = enabled;
-            _minutesNum.Enabled = enabled;
-            _specificDaysCheck.Enabled = enabled;
-            if (!enabled) _specificDaysCheck.Checked = false;
+            // Keep _specificDaysCheck always enabled so user can click it to turn on recurring
+            _specificDaysCheck.Enabled = true; 
+            
+            bool specEnabled = _specificDaysCheck.Checked;
+            _daysPanel.Enabled = enabled && specEnabled;
+            
+            // Interval is only enabled if recurring is ON AND specific days is OFF
+            _daysNum.Enabled = enabled && !specEnabled;
+            _hoursNum.Enabled = enabled && !specEnabled;
+            _minutesNum.Enabled = enabled && !specEnabled;
+
+            if (!enabled) 
+            {
+                _specificDaysCheck.Checked = false;
+            }
         }
 
         private void PickColor(Button btn, bool isBg)

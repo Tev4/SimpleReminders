@@ -446,8 +446,20 @@ namespace SimpleReminders.Forms
 
         private string GetDaysDisplayString(Reminder reminder)
         {
-            if (!reminder.IsRecurring || reminder.EnabledDays == null || reminder.EnabledDays.Count == 0)
+            if (!reminder.IsRecurring)
                 return string.Empty;
+
+            if (reminder.EnabledDays == null || reminder.EnabledDays.Count == 0)
+            {
+                var interval = reminder.RecurrenceInterval;
+                var parts = new List<string>();
+                if (interval.Days > 0) parts.Add($"{interval.Days} day{(interval.Days > 1 ? "s" : "")}");
+                if (interval.Hours > 0) parts.Add($"{interval.Hours} hr{(interval.Hours > 1 ? "s" : "")}");
+                if (interval.Minutes > 0) parts.Add($"{interval.Minutes} min{(interval.Minutes > 1 ? "s" : "")}");
+                
+                if (parts.Count == 0) return string.Empty;
+                return $"(Every {string.Join(", ", parts)})";
+            }
 
             if (reminder.EnabledDays.Count == 7)
                 return "(Every day)";
@@ -463,7 +475,7 @@ namespace SimpleReminders.Forms
                 .OrderBy(d => (int)d == 0 ? 7 : (int)d) // Mon-Sun order
                 .Select(d => dayMap[d]);
 
-            return string.Join(", ", orderedDays);
+            return $"({string.Join(", ", orderedDays)})";
         }
     }
 }
