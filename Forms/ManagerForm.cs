@@ -291,6 +291,18 @@ namespace SimpleReminders.Forms
             };
 
             optionsMenu.DropDownItems.Add(_minimizedToTrayMenuItem);
+
+            optionsMenu.DropDownItems.Add(new ToolStripSeparator());
+            var defaultSettingsMenuItem = new ToolStripMenuItem("Default Notification Settings");
+            defaultSettingsMenuItem.Click += (s, e) =>
+            {
+                using (var form = new SettingsForm(_settingsService))
+                {
+                    form.ShowDialog();
+                }
+            };
+            optionsMenu.DropDownItems.Add(defaultSettingsMenuItem);
+
             _menuStrip.Items.Add(optionsMenu);
 
             this.MainMenuStrip = _menuStrip;
@@ -313,7 +325,7 @@ namespace SimpleReminders.Forms
 
         private void AddReminder(object? sender, EventArgs e)
         {
-            var form = new EditReminderForm();
+            var form = new EditReminderForm(_settingsService);
             if (form.ShowDialog() == DialogResult.OK)
             {
                 // Store the index of the new reminder
@@ -338,7 +350,7 @@ namespace SimpleReminders.Forms
                 // Store the index of the selected reminder before editing
                 int selectedIndex = _remindersList.SelectedIndex;
 
-                var form = new EditReminderForm(reminder);
+                var form = new EditReminderForm(_settingsService, reminder);
                 if (form.ShowDialog() == DialogResult.OK)
                 {
                     _reminderManager.Update(form.Reminder);

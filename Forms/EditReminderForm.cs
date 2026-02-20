@@ -25,6 +25,7 @@ namespace SimpleReminders.Forms
         private NumericUpDown _heightNum = null!;
         private DateTimePicker _dueDatePicker = null!;
         private Button _soundBtn = null!;
+        private Button _resetSoundBtn = null!;
         private Label _soundLabel = null!;
         private Button _saveButton = null!;
         private Button _cancelButton = null!;
@@ -43,11 +44,27 @@ namespace SimpleReminders.Forms
             DayOfWeek.Sunday 
         };
 
-        public EditReminderForm(Reminder? reminder = null)
+        public EditReminderForm(SettingsService settingsService, Reminder? reminder = null)
         {
             _isNew = reminder == null;
-            Reminder = reminder ?? new Reminder();
-            if (_isNew) Reminder.DueDate = DateTime.Now.AddMinutes(5); // Default 5 mins
+            if (_isNew)
+            {
+                var settings = settingsService.Settings;
+                Reminder = new Reminder
+                {
+                    BackgroundColor = settings.DefaultBackgroundColor,
+                    FontColor = settings.DefaultFontColor,
+                    FontSize = settings.DefaultFontSize,
+                    Width = settings.DefaultWidth,
+                    Height = settings.DefaultHeight,
+                    SoundPath = settings.DefaultSoundPath,
+                    DueDate = DateTime.Now.AddMinutes(5)
+                };
+            }
+            else
+            {
+                Reminder = reminder!;
+            }
 
             InitializeComponent();
             LoadData();
@@ -179,8 +196,25 @@ namespace SimpleReminders.Forms
             var soundPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left };
             _soundBtn = new Button { Text = "Browse", Width = 80 };
             _soundBtn.Click += (s, e) => PickSound();
+            _resetSoundBtn = new Button { 
+                Text = "✕", 
+                Width = 25, 
+                Height = 25,
+                FlatStyle = FlatStyle.Flat, 
+                ForeColor = Color.Red,
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 3, 0, 0),
+                TabStop = false
+            };
+            _resetSoundBtn.FlatAppearance.BorderSize = 0;
+            _resetSoundBtn.FlatAppearance.MouseOverBackColor = Color.FromArgb(240, 240, 240);
+            _resetSoundBtn.Click += (s, e) => {
+                Reminder.SoundPath = string.Empty;
+                UpdateSoundLabel();
+            };
             _soundLabel = new Label { Text = "Default", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left };
             soundPanel.Controls.Add(_soundBtn);
+            soundPanel.Controls.Add(_resetSoundBtn);
             soundPanel.Controls.Add(_soundLabel);
             layout.Controls.Add(soundPanel, 1, 11);
 
@@ -285,7 +319,9 @@ namespace SimpleReminders.Forms
 
         private void UpdateSoundLabel()
         {
-             _soundLabel.Text = string.IsNullOrEmpty(Reminder.SoundPath) ? "Default" : System.IO.Path.GetFileName(Reminder.SoundPath);
+             bool hasCustomSound = !string.IsNullOrEmpty(Reminder.SoundPath);
+             _soundLabel.Text = hasCustomSound ? System.IO.Path.GetFileName(Reminder.SoundPath) : "Default";
+             _resetSoundBtn.Visible = hasCustomSound;
         }
 
         private void SaveData()
