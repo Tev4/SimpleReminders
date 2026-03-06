@@ -24,8 +24,8 @@ namespace SimpleReminders
             _reminderManager = new ReminderManager();
             _reminderManager.ReminderDue += OnReminderDue;
 
-            _notificationWindowManager = new NotificationWindowManager();
             _settingsService = new SettingsService();
+            _notificationWindowManager = new NotificationWindowManager(_settingsService);
             _startupService = new StartupService();
 
             // Enable startup by default on first run
@@ -95,7 +95,7 @@ namespace SimpleReminders
             _uiContext.BeginInvoke(new Action(() =>
             {
                 PlaySound(reminder.SoundPath);
-                _notificationWindowManager.ShowNotification(reminder, _settingsService);
+                _notificationWindowManager.ShowNotification(reminder);
             }));
         }
 

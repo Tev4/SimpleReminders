@@ -21,13 +21,17 @@ namespace SimpleReminders.Forms
         private Button _resetFontBtn = null!;
         private NumericUpDown _widthNum = null!;
         private NumericUpDown _heightNum = null!;
+        private NumericUpDown _offsetXNum = null!;
+        private NumericUpDown _offsetYNum = null!;
         private Button _resetSizeBtn = null!;
+        private Button _resetOffsetBtn = null!;
         private Button _soundBtn = null!;
         private Button _resetSoundBtn = null!;
         private Label _soundLabel = null!;
         private Button _saveButton = null!;
         private Button _cancelButton = null!;
         private Button _restoreDefaultsBtn = null!;
+        private string _tempSoundPath = string.Empty;
 
         public SettingsForm(SettingsService settingsService)
         {
@@ -42,7 +46,7 @@ namespace SimpleReminders.Forms
         {
             this.Text = "Default Reminder Settings";
             this.Icon = IconService.AppIcon;
-            this.Size = new Size(420, 500);
+            this.Size = new Size(420, 550);
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
@@ -50,9 +54,9 @@ namespace SimpleReminders.Forms
             var layout = new TableLayoutPanel();
             layout.Dock = DockStyle.Fill;
             layout.Padding = new Padding(15);
-            layout.RowCount = 8;
+            layout.RowCount = 9;
             layout.ColumnCount = 2;
-            for (int i = 0; i < 6; i++)
+            for (int i = 0; i < 7; i++)
             {
                 layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             }
@@ -152,14 +156,34 @@ namespace SimpleReminders.Forms
                 _widthNum.Focus();
             };
             sizePanel.Controls.Add(_widthNum);
-            sizePanel.Controls.Add(new Label { Text = "x", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 5, 0, 0) });
+            sizePanel.Controls.Add(new Label { Text = "x", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 0, 1) });
             sizePanel.Controls.Add(_heightNum);
             sizePanel.Controls.Add(_resetSizeBtn);
             layout.Controls.Add(sizePanel, 1, 4);
 
+            // Default Offset (Position)
+            layout.Controls.Add(new Label { Text = "Default Position Offset:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 5);
+            var offsetPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left, WrapContents = false };
+            _offsetXNum = new NumericUpDown { Minimum = -2000, Maximum = 2000, Width = 60 };
+            _offsetYNum = new NumericUpDown { Minimum = -2000, Maximum = 2000, Width = 60 };
+            _offsetXNum.ValueChanged += (s, e) => UpdateResetButtonVisibilities();
+            _offsetYNum.ValueChanged += (s, e) => UpdateResetButtonVisibilities();
+            _resetOffsetBtn = CreateResetButton();
+            _resetOffsetBtn.Click += (s, e) => {
+                _offsetXNum.Value = 0;
+                _offsetYNum.Value = 0;
+                _offsetXNum.Focus();
+            };
+            offsetPanel.Controls.Add(new Label { Text = "X:", AutoSize = false, Width = 20, Height = 23, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 2, 0, 0) });
+            offsetPanel.Controls.Add(_offsetXNum);
+            offsetPanel.Controls.Add(new Label { Text = "Y:", AutoSize = false, Width = 20, Height = 23, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(10, 2, 0, 0) });
+            offsetPanel.Controls.Add(_offsetYNum);
+            offsetPanel.Controls.Add(_resetOffsetBtn);
+            layout.Controls.Add(offsetPanel, 1, 5);
+
             // Sound
-            layout.Controls.Add(new Label { Text = "Notification Sound:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 5);
-            var soundPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left };
+            layout.Controls.Add(new Label { Text = "Notification Sound:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 6);
+            var soundPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left, WrapContents = false };
             _soundBtn = new Button { Text = "Browse", Width = 80 };
             _soundBtn.Click += (s, e) => PickSound();
             _resetSoundBtn = new Button { 
@@ -175,15 +199,24 @@ namespace SimpleReminders.Forms
             _resetSoundBtn.FlatAppearance.BorderSize = 0;
             _resetSoundBtn.FlatAppearance.MouseOverBackColor = Color.FromArgb(240, 240, 240);
             _resetSoundBtn.Click += (s, e) => {
-                _settings.DefaultSoundPath = string.Empty;
+                _tempSoundPath = string.Empty;
                 UpdateSoundLabel();
                 _soundBtn.Focus();
+                UpdateResetButtonVisibilities();
             };
-            _soundLabel = new Label { Text = "System Default", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left };
+            _soundLabel = new Label { 
+                Text = "System Default", 
+                AutoSize = false, 
+                Width = 180, 
+                Height = 25, 
+                AutoEllipsis = true, 
+                TextAlign = ContentAlignment.MiddleLeft, 
+                Anchor = AnchorStyles.Left 
+            };
             soundPanel.Controls.Add(_soundBtn);
             soundPanel.Controls.Add(_resetSoundBtn);
             soundPanel.Controls.Add(_soundLabel);
-            layout.Controls.Add(soundPanel, 1, 5);
+            layout.Controls.Add(soundPanel, 1, 6);
 
             // Buttons
             var btnPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Bottom, Height = 50, Padding = new Padding(0, 0, 10, 10) };
@@ -214,17 +247,22 @@ namespace SimpleReminders.Forms
             _fontSizeNum.Value = (decimal)_settings.DefaultFontSize;
             _widthNum.Value = _settings.DefaultWidth;
             _heightNum.Value = _settings.DefaultHeight;
+            _offsetXNum.Value = _settings.DefaultOffsetX;
+            _offsetYNum.Value = _settings.DefaultOffsetY;
 
             int index = _fontFamilyCombo.FindStringExact(_settings.DefaultFontFamily);
             _fontFamilyCombo.SelectedIndex = index >= 0 ? index : 0;
 
+            _tempSoundPath = _settings.DefaultSoundPath;
+
             UpdateResetButtonVisibilities();
         }
 
+
         private void UpdateSoundLabel()
         {
-            bool hasCustomSound = !string.IsNullOrEmpty(_settings.DefaultSoundPath);
-            _soundLabel.Text = hasCustomSound ? System.IO.Path.GetFileName(_settings.DefaultSoundPath) : "System Default";
+            bool hasCustomSound = !string.IsNullOrEmpty(_tempSoundPath);
+            _soundLabel.Text = hasCustomSound ? System.IO.Path.GetFileName(_tempSoundPath) : "System Default";
             _resetSoundBtn.Visible = hasCustomSound;
         }
 
@@ -266,6 +304,7 @@ namespace SimpleReminders.Forms
             _resetFontColorBtn.Visible = ColorTranslator.ToHtml(_fontColorBtn.BackColor).ToUpper() != "#FFFFFF";
             _resetFontSizeBtn.Visible = _fontSizeNum.Value != 14m;
             _resetSizeBtn.Visible = _widthNum.Value != 250 || _heightNum.Value != 80;
+            _resetOffsetBtn.Visible = _offsetXNum.Value != 0 || _offsetYNum.Value != 0;
             
             if (_fontFamilyCombo != null && _resetFontBtn != null)
             {
@@ -277,6 +316,9 @@ namespace SimpleReminders.Forms
             {
                 UpdateSoundLabel();
             }
+            
+            // Check if sound differs from settings to show/hide reset correctly if needed 
+            // (but UpdateSoundLabel already handles visibility of the red X based on current selection)
         }
 
         private void PickSound()
@@ -286,8 +328,9 @@ namespace SimpleReminders.Forms
                 ofd.Filter = "Audio Files|*.wav";
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
-                    _settings.DefaultSoundPath = ofd.FileName;
+                    _tempSoundPath = ofd.FileName;
                     UpdateSoundLabel();
+                    UpdateResetButtonVisibilities();
                 }
             }
         }
@@ -299,8 +342,10 @@ namespace SimpleReminders.Forms
             _settings.DefaultFontSize = (float)_fontSizeNum.Value;
             _settings.DefaultWidth = (int)_widthNum.Value;
             _settings.DefaultHeight = (int)_heightNum.Value;
+            _settings.DefaultOffsetX = (int)_offsetXNum.Value;
+            _settings.DefaultOffsetY = (int)_offsetYNum.Value;
             _settings.DefaultFontFamily = _fontFamilyCombo.SelectedItem?.ToString() ?? "Segoe UI Variable Display";
-            // sound path is updated in PickSound
+            _settings.DefaultSoundPath = _tempSoundPath;
             _settingsService.SaveSettings();
         }
 
@@ -308,15 +353,21 @@ namespace SimpleReminders.Forms
         {
             if (MessageBox.Show("Are you sure you want to reset all reminder settings to defaults?", "Restore Defaults", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             {
-                _settings.DefaultBackgroundColor = "#005FB8";
-                _settings.DefaultFontColor = "#FFFFFF";
-                _settings.DefaultFontSize = 14f;
-                _settings.DefaultFontFamily = "Segoe UI Variable Display";
-                _settings.DefaultWidth = 250;
-                _settings.DefaultHeight = 80;
-                _settings.DefaultSoundPath = string.Empty;
+                _bgColorBtn.BackColor = ColorTranslator.FromHtml("#005FB8");
+                _fontColorBtn.BackColor = ColorTranslator.FromHtml("#FFFFFF");
+                _fontSizeNum.Value = 14m;
+                
+                int index = _fontFamilyCombo.FindStringExact("Segoe UI Variable Display");
+                _fontFamilyCombo.SelectedIndex = index >= 0 ? index : 0;
+                
+                _widthNum.Value = 250;
+                _heightNum.Value = 80;
+                _offsetXNum.Value = 0;
+                _offsetYNum.Value = 0;
+                _tempSoundPath = string.Empty;
 
-                LoadData();
+                UpdateSoundLabel();
+                UpdateResetButtonVisibilities();
             }
         }
     }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace SimpleReminders.Models
 {
@@ -14,6 +15,10 @@ namespace SimpleReminders.Models
         public string DefaultFontFamily { get; set; } = "Segoe UI Variable Display";
         public int DefaultWidth { get; set; } = 250;
         public int DefaultHeight { get; set; } = 80;
+        public int DefaultOffsetX { get; set; } = 0;
+        public int DefaultOffsetY { get; set; } = 0;
         public string DefaultSoundPath { get; set; } = string.Empty;
+
+        public List<ExecutableOffsetRule> ExecutableOffsets { get; set; } = new List<ExecutableOffsetRule>();
     }
 }

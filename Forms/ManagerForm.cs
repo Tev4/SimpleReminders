@@ -303,6 +303,16 @@ namespace SimpleReminders.Forms
             };
             optionsMenu.DropDownItems.Add(defaultSettingsMenuItem);
 
+            var offsetForApplicationsMenuItem = new ToolStripMenuItem("Offset for applications");
+            offsetForApplicationsMenuItem.Click += (s, e) =>
+            {
+                using (var form = new ExecutableOffsetsForm(_settingsService))
+                {
+                    form.ShowDialog();
+                }
+            };
+            optionsMenu.DropDownItems.Add(offsetForApplicationsMenuItem);
+
             _menuStrip.Items.Add(optionsMenu);
 
             this.MainMenuStrip = _menuStrip;

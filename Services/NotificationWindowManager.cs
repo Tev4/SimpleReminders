@@ -14,10 +14,16 @@ namespace SimpleReminders.Services
         private readonly int _spacing = 10;
         private readonly int _bottomOffset = 50;
         private readonly int _rightOffset = 20;
+        private readonly SettingsService _settingsService;
 
-        public void ShowNotification(Reminder reminder, SettingsService settingsService)
+        public NotificationWindowManager(SettingsService settingsService)
         {
-            var form = new NotificationForm(reminder, settingsService);
+            _settingsService = settingsService;
+        }
+
+        public void ShowNotification(Reminder reminder)
+        {
+            var form = new NotificationForm(reminder, _settingsService);
             form.Dismissed += (s, e) => CloseNotification(form);
             
             _openNotifications.Add(form);
@@ -44,14 +50,33 @@ namespace SimpleReminders.Services
 
             var workingArea = screen.WorkingArea;
 
-            int currentY = workingArea.Bottom - _bottomOffset;
+            // Get active app offset if any
+            int offsetX = _settingsService.Settings.DefaultOffsetX;
+            int offsetY = _settingsService.Settings.DefaultOffsetY;
+            
+            string? activePath = WindowTrackingService.GetActiveExecutablePath();
+            if (!string.IsNullOrEmpty(activePath))
+            {
+                var rule = _settingsService.Settings.ExecutableOffsets
+                    .FirstOrDefault(r => 
+                        string.Equals(r.ExecutablePath, activePath, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(System.IO.Path.GetFileName(r.ExecutablePath), System.IO.Path.GetFileName(activePath), StringComparison.OrdinalIgnoreCase));
+                
+                if (rule != null)
+                {
+                    offsetX += rule.XOffset;
+                    offsetY += rule.YOffset;
+                }
+            }
+
+            int currentY = workingArea.Bottom - _bottomOffset - offsetY;
 
             for (int i = _openNotifications.Count - 1; i >= 0; i--)
             {
                 var form = _openNotifications[i];
                 if (form.IsDisposed) continue;
 
-                int x = workingArea.Right - form.Width - _rightOffset;
+                int x = workingArea.Right - form.Width - _rightOffset + offsetX;
                 int y = currentY - form.Height;
                 
                 form.Location = new Point(x, y);
