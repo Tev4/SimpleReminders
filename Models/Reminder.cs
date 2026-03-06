@@ -14,6 +14,7 @@ namespace SimpleReminders.Models
         public string BackgroundColor { get; set; } = "#005FB8";
         public string FontColor { get; set; } = "#FFFFFF"; 
         public float FontSize { get; set; } = 14f;
+        public string FontFamily { get; set; } = string.Empty;
         public int Width { get; set; } = 250;
         public int Height { get; set; } = 80;
         

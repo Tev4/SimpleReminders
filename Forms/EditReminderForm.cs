@@ -10,6 +10,7 @@ namespace SimpleReminders.Forms
     public class EditReminderForm : Form
     {
         public Reminder Reminder { get; private set; }
+        private readonly SettingsService _settingsService;
         private readonly bool _isNew;
 
         private TextBox _titleBox = null!;
@@ -19,10 +20,16 @@ namespace SimpleReminders.Forms
         private NumericUpDown _hoursNum = null!;
         private NumericUpDown _minutesNum = null!;
         private Button _bgColorBtn = null!;
+        private Button _resetBgColorBtn = null!;
         private Button _fontColorBtn = null!;
+        private Button _resetFontColorBtn = null!;
         private NumericUpDown _fontSizeNum = null!;
+        private Button _resetFontSizeBtn = null!;
+        private ComboBox _fontFamilyCombo = null!;
+        private Button _resetFontBtn = null!;
         private NumericUpDown _widthNum = null!;
         private NumericUpDown _heightNum = null!;
+        private Button _resetSizeBtn = null!;
         private DateTimePicker _dueDatePicker = null!;
         private Button _soundBtn = null!;
         private Button _resetSoundBtn = null!;
@@ -46,15 +53,17 @@ namespace SimpleReminders.Forms
 
         public EditReminderForm(SettingsService settingsService, Reminder? reminder = null)
         {
+            _settingsService = settingsService;
             _isNew = reminder == null;
             if (_isNew)
             {
-                var settings = settingsService.Settings;
+                var settings = _settingsService.Settings;
                 Reminder = new Reminder
                 {
                     BackgroundColor = settings.DefaultBackgroundColor,
                     FontColor = settings.DefaultFontColor,
                     FontSize = settings.DefaultFontSize,
+                    FontFamily = settings.DefaultFontFamily,
                     Width = settings.DefaultWidth,
                     Height = settings.DefaultHeight,
                     SoundPath = settings.DefaultSoundPath,
@@ -74,7 +83,7 @@ namespace SimpleReminders.Forms
         {
             this.Text = _isNew ? "New Reminder" : "Edit Reminder";
             this.Icon = IconService.AppIcon;
-            this.Size = new Size(450, 600);
+            this.Size = new Size(450, 630);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
@@ -82,13 +91,13 @@ namespace SimpleReminders.Forms
             var layout = new TableLayoutPanel();
             layout.Dock = DockStyle.Fill;
             layout.Padding = new Padding(10);
-            layout.RowCount = 13;
+            layout.RowCount = 14;
             layout.ColumnCount = 2;
-            for (int i = 0; i < 12; i++)
+            for (int i = 0; i < 13; i++)
             {
                 layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             }
-            // Add a filler row to take up remaining space
+            // Add a filler row to take up remaining space (row 13)
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             layout.AutoSize = true;
 
@@ -188,34 +197,109 @@ namespace SimpleReminders.Forms
 
             // Background Color
             layout.Controls.Add(new Label { Text = "Background Color:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 7);
+            var bgPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left, WrapContents = false };
             _bgColorBtn = new Button { Text = "", Width = 60 };
             _bgColorBtn.Click += (s, e) => PickColor(_bgColorBtn, true);
-            layout.Controls.Add(_bgColorBtn, 1, 7);
+            _resetBgColorBtn = CreateResetButton();
+            _resetBgColorBtn.Click += (s, e) => {
+                _bgColorBtn.BackColor = ColorTranslator.FromHtml(_settingsService.Settings.DefaultBackgroundColor);
+                Reminder.BackgroundColor = _settingsService.Settings.DefaultBackgroundColor;
+                _bgColorBtn.Focus();
+                UpdateResetButtonVisibilities();
+            };
+            bgPanel.Controls.Add(_bgColorBtn);
+            bgPanel.Controls.Add(_resetBgColorBtn);
+            layout.Controls.Add(bgPanel, 1, 7);
 
             // Text Color
             layout.Controls.Add(new Label { Text = "Text Color:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 8);
+            var fgPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left, WrapContents = false };
             _fontColorBtn = new Button { Text = "", Width = 60 };
             _fontColorBtn.Click += (s, e) => PickColor(_fontColorBtn, false);
-            layout.Controls.Add(_fontColorBtn, 1, 8);
+            _resetFontColorBtn = CreateResetButton();
+            _resetFontColorBtn.Click += (s, e) => {
+                _fontColorBtn.BackColor = ColorTranslator.FromHtml(_settingsService.Settings.DefaultFontColor);
+                Reminder.FontColor = _settingsService.Settings.DefaultFontColor;
+                _fontColorBtn.Focus();
+                UpdateResetButtonVisibilities();
+            };
+            fgPanel.Controls.Add(_fontColorBtn);
+            fgPanel.Controls.Add(_resetFontColorBtn);
+            layout.Controls.Add(fgPanel, 1, 8);
 
             // Font Size
             layout.Controls.Add(new Label { Text = "Font Size:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 9);
+            var sizeInfoPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left, WrapContents = false };
             _fontSizeNum = new NumericUpDown { Minimum = 8, Maximum = 72, Width = 60 };
-            layout.Controls.Add(_fontSizeNum, 1, 9);
+            _fontSizeNum.ValueChanged += (s, e) => UpdateResetButtonVisibilities();
+            _resetFontSizeBtn = CreateResetButton();
+            _resetFontSizeBtn.Click += (s, e) => {
+                _fontSizeNum.Value = (decimal)_settingsService.Settings.DefaultFontSize;
+                _fontSizeNum.Focus();
+            };
+            sizeInfoPanel.Controls.Add(_fontSizeNum);
+            sizeInfoPanel.Controls.Add(_resetFontSizeBtn);
+            layout.Controls.Add(sizeInfoPanel, 1, 9);
+            
+            // Font Family
+            layout.Controls.Add(new Label { Text = "Font Family:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 10);
+            var fontPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left };
+            _fontFamilyCombo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 180 };
+            _resetFontBtn = new Button { 
+                Text = "✕", 
+                Width = 25, 
+                Height = 25,
+                FlatStyle = FlatStyle.Flat, 
+                ForeColor = Color.Red,
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 3, 0, 0),
+                TabStop = false
+            };
+            _resetFontBtn.FlatAppearance.BorderSize = 0;
+            _resetFontBtn.FlatAppearance.MouseOverBackColor = Color.FromArgb(240, 240, 240);
+            _resetFontBtn.Click += (s, e) => {
+                string defaultFont = _settingsService.Settings.DefaultFontFamily;
+                int defaultIndex = _fontFamilyCombo.FindStringExact(defaultFont);
+                _fontFamilyCombo.SelectedIndex = defaultIndex >= 0 ? defaultIndex : 0;
+                _fontFamilyCombo.Focus();
+            };
+
+            // Populate fonts
+            foreach (var family in FontFamily.Families)
+            {
+                _fontFamilyCombo.Items.Add(family.Name);
+            }
+            _fontFamilyCombo.SelectedIndexChanged += (s, e) => {
+                string selectedFont = _fontFamilyCombo.SelectedItem?.ToString() ?? "";
+                _resetFontBtn.Visible = selectedFont != _settingsService.Settings.DefaultFontFamily;
+            };
+
+            fontPanel.Controls.Add(_fontFamilyCombo);
+            fontPanel.Controls.Add(_resetFontBtn);
+            layout.Controls.Add(fontPanel, 1, 10);
 
             // Size
-            layout.Controls.Add(new Label { Text = "Notification Size (W x H):", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 10);
-            var sizePanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left };
+            layout.Controls.Add(new Label { Text = "Notification Size (W x H):", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 11);
+            var sizePanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left, WrapContents = false };
             _widthNum = new NumericUpDown { Minimum = 100, Maximum = 1000, Width = 60 };
             _heightNum = new NumericUpDown { Minimum = 40, Maximum = 1000, Width = 60 };
+            _widthNum.ValueChanged += (s, e) => UpdateResetButtonVisibilities();
+            _heightNum.ValueChanged += (s, e) => UpdateResetButtonVisibilities();
+            _resetSizeBtn = CreateResetButton();
+            _resetSizeBtn.Click += (s, e) => {
+                _widthNum.Value = _settingsService.Settings.DefaultWidth;
+                _heightNum.Value = _settingsService.Settings.DefaultHeight;
+                _widthNum.Focus();
+            };
             sizePanel.Controls.Add(_widthNum);
-            sizePanel.Controls.Add(new Label { Text = "x", AutoSize = true, Anchor = AnchorStyles.Left });
+            sizePanel.Controls.Add(new Label { Text = "x", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 5, 0, 0) });
             sizePanel.Controls.Add(_heightNum);
-            layout.Controls.Add(sizePanel, 1, 10);
+            sizePanel.Controls.Add(_resetSizeBtn);
+            layout.Controls.Add(sizePanel, 1, 11);
 
             // Sound
-            layout.Controls.Add(new Label { Text = "Notification Sound:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 11);
-            var soundPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left };
+            layout.Controls.Add(new Label { Text = "Notification Sound:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 12);
+            var soundPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left, WrapContents = false };
             _soundBtn = new Button { Text = "Browse", Width = 80 };
             _soundBtn.Click += (s, e) => PickSound();
             _resetSoundBtn = new Button { 
@@ -231,14 +315,15 @@ namespace SimpleReminders.Forms
             _resetSoundBtn.FlatAppearance.BorderSize = 0;
             _resetSoundBtn.FlatAppearance.MouseOverBackColor = Color.FromArgb(240, 240, 240);
             _resetSoundBtn.Click += (s, e) => {
-                Reminder.SoundPath = string.Empty;
+                Reminder.SoundPath = _settingsService.Settings.DefaultSoundPath;
                 UpdateSoundLabel();
+                _soundBtn.Focus();
             };
             _soundLabel = new Label { Text = "Default", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left };
             soundPanel.Controls.Add(_soundBtn);
             soundPanel.Controls.Add(_resetSoundBtn);
             soundPanel.Controls.Add(_soundLabel);
-            layout.Controls.Add(soundPanel, 1, 11);
+            layout.Controls.Add(soundPanel, 1, 12);
 
             // Buttons
             var btnPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Bottom, Height = 40 };
@@ -287,6 +372,15 @@ namespace SimpleReminders.Forms
             _bgColorBtn.BackColor = ColorTranslator.FromHtml(Reminder.BackgroundColor);
             _fontColorBtn.BackColor = ColorTranslator.FromHtml(Reminder.FontColor);
 
+            string targetFont = !string.IsNullOrEmpty(Reminder.FontFamily) 
+                ? Reminder.FontFamily 
+                : _settingsService.Settings.DefaultFontFamily;
+
+            int index = _fontFamilyCombo.FindStringExact(targetFont);
+            _fontFamilyCombo.SelectedIndex = index >= 0 ? index : 0;
+
+            UpdateResetButtonVisibilities();
+
             // Load enabled days
             bool hasSpecificDays = Reminder.EnabledDays != null && Reminder.EnabledDays.Count > 0;
             _specificDaysCheck.Checked = hasSpecificDays;
@@ -332,6 +426,7 @@ namespace SimpleReminders.Forms
                     string hex = ColorTranslator.ToHtml(cd.Color);
                     if (isBg) Reminder.BackgroundColor = hex;
                     else Reminder.FontColor = hex;
+                    UpdateResetButtonVisibilities();
                 }
             }
         }
@@ -351,9 +446,21 @@ namespace SimpleReminders.Forms
 
         private void UpdateSoundLabel()
         {
-             bool hasCustomSound = !string.IsNullOrEmpty(Reminder.SoundPath);
-             _soundLabel.Text = hasCustomSound ? System.IO.Path.GetFileName(Reminder.SoundPath) : "Default";
-             _resetSoundBtn.Visible = hasCustomSound;
+             string currentPath = Reminder.SoundPath;
+             string defaultPath = _settingsService.Settings.DefaultSoundPath;
+             
+             bool isDefault = currentPath == defaultPath;
+             
+             if (isDefault)
+             {
+                 _soundLabel.Text = "App default";
+             }
+             else
+             {
+                 _soundLabel.Text = System.IO.Path.GetFileName(currentPath);
+             }
+             
+             _resetSoundBtn.Visible = !isDefault;
         }
 
         private void SaveData()
@@ -368,6 +475,7 @@ namespace SimpleReminders.Forms
             Reminder.Height = (int)_heightNum.Value;
             Reminder.BackgroundColor = ColorTranslator.ToHtml(_bgColorBtn.BackColor);
             Reminder.FontColor = ColorTranslator.ToHtml(_fontColorBtn.BackColor);
+            Reminder.FontFamily = _fontFamilyCombo.SelectedItem?.ToString() ?? _settingsService.Settings.DefaultFontFamily;
 
             // Save enabled days
             Reminder.EnabledDays.Clear();
@@ -382,6 +490,51 @@ namespace SimpleReminders.Forms
                 }
             }
             // SoundPath is already updated in PickSound/Reminder object reference
+        }
+
+        private Button CreateResetButton()
+        {
+            var btn = new Button { 
+                Text = "✕", 
+                Width = 25, 
+                Height = 25,
+                FlatStyle = FlatStyle.Flat, 
+                ForeColor = Color.Red,
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 3, 0, 0),
+                TabStop = false
+            };
+            btn.FlatAppearance.BorderSize = 0;
+            btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(240, 240, 240);
+            return btn;
+        }
+
+        private void UpdateResetButtonVisibilities()
+        {
+            var settings = _settingsService.Settings;
+            
+            if (_resetBgColorBtn != null)
+                _resetBgColorBtn.Visible = ColorTranslator.ToHtml(_bgColorBtn.BackColor) != settings.DefaultBackgroundColor;
+            
+            if (_resetFontColorBtn != null)
+                _resetFontColorBtn.Visible = ColorTranslator.ToHtml(_fontColorBtn.BackColor) != settings.DefaultFontColor;
+            
+            if (_resetFontSizeBtn != null)
+                _resetFontSizeBtn.Visible = (float)_fontSizeNum.Value != settings.DefaultFontSize;
+            
+            if (_resetSizeBtn != null)
+                _resetSizeBtn.Visible = (int)_widthNum.Value != settings.DefaultWidth || (int)_heightNum.Value != settings.DefaultHeight;
+            
+            if (_fontFamilyCombo != null && _resetFontBtn != null)
+            {
+                string selectedFont = _fontFamilyCombo.SelectedItem?.ToString() ?? "";
+                _resetFontBtn.Visible = selectedFont != settings.DefaultFontFamily;
+            }
+
+            if (_soundLabel != null)
+            {
+                UpdateSoundLabel();
+            }
         }
     }
 }

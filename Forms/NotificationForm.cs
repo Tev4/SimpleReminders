@@ -14,10 +14,12 @@ namespace SimpleReminders.Forms
         private readonly int _cornerRadius = 24;
 
         public event EventHandler? Dismissed;
+        private readonly SettingsService _settingsService;
 
-        public NotificationForm(Models.Reminder reminder)
+        public NotificationForm(Models.Reminder reminder, SettingsService settingsService)
         {
             _reminder = reminder;
+            _settingsService = settingsService;
 
             // Form Setup
             this.Icon = IconService.AppIcon;
@@ -26,6 +28,14 @@ namespace SimpleReminders.Forms
             this.StartPosition = FormStartPosition.Manual;
             this.BackColor = ColorTranslator.FromHtml(reminder.BackgroundColor);
 
+            // Font Selection
+            string fontFamily = !string.IsNullOrEmpty(reminder.FontFamily) 
+                ? reminder.FontFamily 
+                : settingsService.Settings.DefaultFontFamily;
+            
+            if (string.IsNullOrEmpty(fontFamily))
+                fontFamily = "Segoe UI Variable Display";
+
             // Label Setup for emoji support
             _dismissButton = new Button();
             _dismissButton.Text = reminder.Message;
@@ -33,7 +43,7 @@ namespace SimpleReminders.Forms
             _dismissButton.FlatStyle = FlatStyle.Flat;
             _dismissButton.FlatAppearance.BorderSize = 0;
             _dismissButton.ForeColor = ColorTranslator.FromHtml(reminder.FontColor);
-            _dismissButton.Font = new Font("Segoe UI Variable Display", reminder.FontSize, FontStyle.Bold);
+            _dismissButton.Font = new Font(fontFamily, reminder.FontSize, FontStyle.Bold);
             _dismissButton.Cursor = Cursors.Hand;
             _dismissButton.TabStop = false;
             _dismissButton.UseCompatibleTextRendering = false; // Use GDI+ for emoji rendering

@@ -72,11 +72,15 @@ namespace SimpleReminders.Services
                 // If the reminder is in the past and NOT marked as passed, it's a missed occurrence
                 if (reminder.DueDate <= now && !reminder.IsPassed)
                 {
-                    // Trigger it instantly only if it triggers once a day or less (interval >= 1 day)
-                    // or if it's a one-time reminder.
-                    bool isDailyOrLessFrequent = !reminder.IsRecurring || reminder.RecurrenceInterval.TotalDays >= 1;
+                    // Trigger it instantly if:
+                    // 1. It's a one-time reminder (to ensure it isn't lost)
+                    // 2. It's a recurring reminder >= 1 day scheduled for TODAY
+                    bool isOneTime = !reminder.IsRecurring;
+                    bool isDailyMissedToday = reminder.IsRecurring && 
+                                             reminder.RecurrenceInterval.TotalDays >= 1 && 
+                                             reminder.DueDate.Date == now.Date;
 
-                    if (isDailyOrLessFrequent)
+                    if (isOneTime || isDailyMissedToday)
                     {
                         ReminderDue?.Invoke(this, reminder);
                         triggerAny = true;
@@ -102,7 +106,18 @@ namespace SimpleReminders.Services
                 int attempts = 0;
                 while (attempts < 100000)
                 {
-                    bool isPast = reminder.DueDate <= now;
+                    bool isPast;
+                    // Makes sure that if the app was opened after the due time, 
+                    // the reminder is still triggered for >1 day reminders
+                    if (reminder.RecurrenceInterval.TotalDays > 1)
+                    {
+                        isPast = reminder.DueDate < now || (attempts > 0 && reminder.DueDate.Date <= now.Date);
+                    }
+                    else
+                    {
+                        isPast = reminder.DueDate <= now;
+                    }
+
                     bool isDayDisabled = reminder.EnabledDays != null && 
                                         reminder.EnabledDays.Count > 0 && 
                                         !reminder.EnabledDays.Contains(reminder.DueDate.DayOfWeek);

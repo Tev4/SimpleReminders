@@ -11,6 +11,7 @@ namespace SimpleReminders.Models
         public string DefaultBackgroundColor { get; set; } = "#005FB8";
         public string DefaultFontColor { get; set; } = "#FFFFFF";
         public float DefaultFontSize { get; set; } = 14f;
+        public string DefaultFontFamily { get; set; } = "Segoe UI Variable Display";
         public int DefaultWidth { get; set; } = 250;
         public int DefaultHeight { get; set; } = 80;
         public string DefaultSoundPath { get; set; } = string.Empty;

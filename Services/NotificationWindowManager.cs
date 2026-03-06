@@ -15,9 +15,9 @@ namespace SimpleReminders.Services
         private readonly int _bottomOffset = 50;
         private readonly int _rightOffset = 20;
 
-        public void ShowNotification(Reminder reminder)
+        public void ShowNotification(Reminder reminder, SettingsService settingsService)
         {
-            var form = new NotificationForm(reminder);
+            var form = new NotificationForm(reminder, settingsService);
             form.Dismissed += (s, e) => CloseNotification(form);
             
             _openNotifications.Add(form);

@@ -293,7 +293,7 @@ namespace SimpleReminders.Forms
             optionsMenu.DropDownItems.Add(_minimizedToTrayMenuItem);
 
             optionsMenu.DropDownItems.Add(new ToolStripSeparator());
-            var defaultSettingsMenuItem = new ToolStripMenuItem("Default Notification Settings");
+            var defaultSettingsMenuItem = new ToolStripMenuItem("Default Reminder Settings");
             defaultSettingsMenuItem.Click += (s, e) =>
             {
                 using (var form = new SettingsForm(_settingsService))

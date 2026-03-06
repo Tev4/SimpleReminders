@@ -95,7 +95,7 @@ namespace SimpleReminders
             _uiContext.BeginInvoke(new Action(() =>
             {
                 PlaySound(reminder.SoundPath);
-                _notificationWindowManager.ShowNotification(reminder);
+                _notificationWindowManager.ShowNotification(reminder, _settingsService);
             }));
         }
 
