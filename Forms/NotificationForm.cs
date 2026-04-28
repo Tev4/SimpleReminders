@@ -15,6 +15,8 @@ namespace SimpleReminders.Forms
 
         public event EventHandler? Dismissed;
         private readonly SettingsService _settingsService;
+        private System.Windows.Forms.Timer? _displayTimer;
+        private System.Windows.Forms.Timer? _fadeTimer;
 
         public NotificationForm(Models.Reminder reminder, SettingsService settingsService)
         {
@@ -71,9 +73,47 @@ namespace SimpleReminders.Forms
 
             this.Controls.Add(_dismissButton);
 
+            if (_reminder.AutoFade)
+            {
+                _displayTimer = new System.Windows.Forms.Timer();
+                _displayTimer.Interval = _reminder.DisplayDurationSeconds * 1000;
+                _displayTimer.Tick += (s, e) => 
+                {
+                    _displayTimer.Stop();
+                    StartFadeOut();
+                };
+                _displayTimer.Start();
+            }
+
             // Shape
             this.Load += (s, e) => SetRoundedRegion();
             this.Resize += (s, e) => SetRoundedRegion();
+        }
+
+        private void StartFadeOut()
+        {
+            _fadeTimer = new System.Windows.Forms.Timer();
+            _fadeTimer.Interval = 15; // 300ms / (1.0 / 0.05) = 15ms
+            _fadeTimer.Tick += (s, e) => 
+            {
+                this.Opacity -= 0.05;
+                if (this.Opacity <= 0)
+                {
+                    _fadeTimer.Stop();
+                    this.Close();
+                    Dismissed?.Invoke(this, EventArgs.Empty);
+                }
+            };
+            _fadeTimer.Start();
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            _displayTimer?.Stop();
+            _displayTimer?.Dispose();
+            _fadeTimer?.Stop();
+            _fadeTimer?.Dispose();
+            base.OnFormClosing(e);
         }
 
         protected override bool ShowWithoutActivation => true;

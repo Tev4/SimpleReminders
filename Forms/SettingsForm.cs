@@ -28,6 +28,7 @@ namespace SimpleReminders.Forms
         private Button _soundBtn = null!;
         private Button _resetSoundBtn = null!;
         private Label _soundLabel = null!;
+        private CheckBox _fireIfMissedCheck = null!;
         private Button _saveButton = null!;
         private Button _cancelButton = null!;
         private Button _restoreDefaultsBtn = null!;
@@ -46,7 +47,7 @@ namespace SimpleReminders.Forms
         {
             this.Text = "Default Reminder Settings";
             this.Icon = IconService.AppIcon;
-            this.Size = new Size(420, 550);
+            this.Size = new Size(420, 600);
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
@@ -54,9 +55,9 @@ namespace SimpleReminders.Forms
             var layout = new TableLayoutPanel();
             layout.Dock = DockStyle.Fill;
             layout.Padding = new Padding(15);
-            layout.RowCount = 9;
+            layout.RowCount = 10;
             layout.ColumnCount = 2;
-            for (int i = 0; i < 7; i++)
+            for (int i = 0; i < 8; i++)
             {
                 layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             }
@@ -217,6 +218,11 @@ namespace SimpleReminders.Forms
             soundPanel.Controls.Add(_resetSoundBtn);
             soundPanel.Controls.Add(_soundLabel);
             layout.Controls.Add(soundPanel, 1, 6);
+            
+            // Fire If Missed
+            layout.Controls.Add(new Label { Text = "Fire If Missed:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 7);
+            _fireIfMissedCheck = new CheckBox {};
+            layout.Controls.Add(_fireIfMissedCheck, 1, 7);
 
             // Buttons
             var btnPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Bottom, Height = 50, Padding = new Padding(0, 0, 10, 10) };
@@ -254,7 +260,7 @@ namespace SimpleReminders.Forms
             _fontFamilyCombo.SelectedIndex = index >= 0 ? index : 0;
 
             _tempSoundPath = _settings.DefaultSoundPath;
-
+            _fireIfMissedCheck.Checked = _settings.DefaultFireIfMissed;
             UpdateResetButtonVisibilities();
         }
 
@@ -346,6 +352,7 @@ namespace SimpleReminders.Forms
             _settings.DefaultOffsetY = (int)_offsetYNum.Value;
             _settings.DefaultFontFamily = _fontFamilyCombo.SelectedItem?.ToString() ?? "Segoe UI Variable Display";
             _settings.DefaultSoundPath = _tempSoundPath;
+            _settings.DefaultFireIfMissed = _fireIfMissedCheck.Checked;
             _settingsService.SaveSettings();
         }
 
@@ -365,6 +372,7 @@ namespace SimpleReminders.Forms
                 _offsetXNum.Value = 0;
                 _offsetYNum.Value = 0;
                 _tempSoundPath = string.Empty;
+                _fireIfMissedCheck.Checked = false;
 
                 UpdateSoundLabel();
                 UpdateResetButtonVisibilities();

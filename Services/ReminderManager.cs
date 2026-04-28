@@ -70,21 +70,10 @@ namespace SimpleReminders.Services
             foreach (var reminder in _reminders)
             {
                 // If the reminder is in the past and NOT marked as passed, it's a missed occurrence
-                if (reminder.DueDate <= now && !reminder.IsPassed)
+                if (reminder.DueDate <= now && !reminder.IsPassed && reminder.FireIfMissed)
                 {
-                    // Trigger it instantly if:
-                    // 1. It's a one-time reminder (to ensure it isn't lost)
-                    // 2. It's a recurring reminder >= 1 day scheduled for TODAY
-                    bool isOneTime = !reminder.IsRecurring;
-                    bool isDailyMissedToday = reminder.IsRecurring && 
-                                             reminder.RecurrenceInterval.TotalDays >= 1 && 
-                                             reminder.DueDate.Date == now.Date;
-
-                    if (isOneTime || isDailyMissedToday)
-                    {
-                        ReminderDue?.Invoke(this, reminder);
-                        triggerAny = true;
-                    }
+                    ReminderDue?.Invoke(this, reminder);
+                    triggerAny = true;
                 }
 
                 EnsureValidNextOccurrence(reminder);

@@ -18,6 +18,9 @@ namespace SimpleReminders.Models
         public int DefaultOffsetX { get; set; } = 0;
         public int DefaultOffsetY { get; set; } = 0;
         public string DefaultSoundPath { get; set; } = string.Empty;
+        public bool DefaultAutoFade { get; set; } = true;
+        public int DefaultFadeDelay { get; set; } = 15;
+        public bool DefaultFireIfMissed { get; set; } = false;
 
         public List<ExecutableOffsetRule> ExecutableOffsets { get; set; } = new List<ExecutableOffsetRule>();
     }

@@ -34,6 +34,9 @@ namespace SimpleReminders.Forms
         private Button _soundBtn = null!;
         private Button _resetSoundBtn = null!;
         private Label _soundLabel = null!;
+        private CheckBox _fireIfMissedCheck = null!;
+        private CheckBox _autoFadeCheck = null!;
+        private NumericUpDown _displayDurationNum = null!;
         private Button _saveButton = null!;
         private Button _cancelButton = null!;
 
@@ -67,6 +70,7 @@ namespace SimpleReminders.Forms
                     Width = settings.DefaultWidth,
                     Height = settings.DefaultHeight,
                     SoundPath = settings.DefaultSoundPath,
+                    FireIfMissed = settings.DefaultFireIfMissed,
                     DueDate = DateTime.Now.AddMinutes(5)
                 };
             }
@@ -83,7 +87,7 @@ namespace SimpleReminders.Forms
         {
             this.Text = _isNew ? "New Reminder" : "Edit Reminder";
             this.Icon = IconService.AppIcon;
-            this.Size = new Size(450, 630);
+            this.Size = new Size(500, 680);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
@@ -91,13 +95,13 @@ namespace SimpleReminders.Forms
             var layout = new TableLayoutPanel();
             layout.Dock = DockStyle.Fill;
             layout.Padding = new Padding(10);
-            layout.RowCount = 14;
+            layout.RowCount = 16;
             layout.ColumnCount = 2;
-            for (int i = 0; i < 13; i++)
+            for (int i = 0; i < 15; i++)
             {
                 layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             }
-            // Add a filler row to take up remaining space (row 13)
+            // Add a filler row to take up remaining space (row 15)
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             layout.AutoSize = true;
 
@@ -324,6 +328,25 @@ namespace SimpleReminders.Forms
             soundPanel.Controls.Add(_resetSoundBtn);
             soundPanel.Controls.Add(_soundLabel);
             layout.Controls.Add(soundPanel, 1, 12);
+            
+            // Auto-fade
+            layout.Controls.Add(new Label { Text = "Auto-fade:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 13);
+            var fadePanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left, WrapContents = false };
+            _autoFadeCheck = new CheckBox { Text = "Fade away after", AutoSize = true, Margin = new Padding(0, 5, 5, 0) };
+            _displayDurationNum = new NumericUpDown { Minimum = 1, Maximum = 3600, Width = 60 };
+            var secLabel = new Label { Text = "seconds", AutoSize = true, Margin = new Padding(0, 5, 0, 0) };
+            
+            _autoFadeCheck.CheckedChanged += (s, e) => _displayDurationNum.Enabled = _autoFadeCheck.Checked;
+            
+            fadePanel.Controls.Add(_autoFadeCheck);
+            fadePanel.Controls.Add(_displayDurationNum);
+            fadePanel.Controls.Add(secLabel);
+            layout.Controls.Add(fadePanel, 1, 13);
+            
+            // Fire If Missed
+            layout.Controls.Add(new Label { Text = "Fire If Missed:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 14);
+            _fireIfMissedCheck = new CheckBox {};
+            layout.Controls.Add(_fireIfMissedCheck, 1, 14);
 
             // Buttons
             var btnPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Bottom, Height = 40 };
@@ -371,6 +394,10 @@ namespace SimpleReminders.Forms
             _heightNum.Value = Reminder.Height > 0 ? Reminder.Height : 80;
             _bgColorBtn.BackColor = ColorTranslator.FromHtml(Reminder.BackgroundColor);
             _fontColorBtn.BackColor = ColorTranslator.FromHtml(Reminder.FontColor);
+            _autoFadeCheck.Checked = Reminder.AutoFade;
+            _displayDurationNum.Value = Math.Max(_displayDurationNum.Minimum, Math.Min(_displayDurationNum.Maximum, Reminder.DisplayDurationSeconds));
+            _displayDurationNum.Enabled = Reminder.AutoFade;
+            _fireIfMissedCheck.Checked = Reminder.FireIfMissed;
 
             string targetFont = !string.IsNullOrEmpty(Reminder.FontFamily) 
                 ? Reminder.FontFamily 
@@ -476,6 +503,9 @@ namespace SimpleReminders.Forms
             Reminder.BackgroundColor = ColorTranslator.ToHtml(_bgColorBtn.BackColor);
             Reminder.FontColor = ColorTranslator.ToHtml(_fontColorBtn.BackColor);
             Reminder.FontFamily = _fontFamilyCombo.SelectedItem?.ToString() ?? _settingsService.Settings.DefaultFontFamily;
+            Reminder.AutoFade = _autoFadeCheck.Checked;
+            Reminder.DisplayDurationSeconds = (int)_displayDurationNum.Value;
+            Reminder.FireIfMissed = _fireIfMissedCheck.Checked;
 
             // Save enabled days
             Reminder.EnabledDays.Clear();

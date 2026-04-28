@@ -34,6 +34,13 @@ namespace SimpleReminders.Models
         // Sound
         public string SoundPath { get; set; } = string.Empty; // Path to custom sound or null for default
 
+        // Auto-dismiss
+        public bool AutoFade { get; set; } = false;
+        public int DisplayDurationSeconds { get; set; } = 5;
+
+        // Missing handling
+        public bool FireIfMissed { get; set; } = false;
+
         public Reminder() { }
 
         public override string ToString()
