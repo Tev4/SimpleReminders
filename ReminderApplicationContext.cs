@@ -6,6 +6,8 @@ using System.Media;
 using SimpleReminders.Services;
 using SimpleReminders.Forms;
 using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 namespace SimpleReminders
 {
@@ -18,6 +20,9 @@ namespace SimpleReminders
         private readonly Control _uiContext;
         private readonly SettingsService _settingsService;
         private readonly StartupService _startupService;
+        
+        [DllImport("user32.dll")]
+        private static extern void DisableProcessWindowsGhosting();
 
         public ReminderApplicationContext()
         {
@@ -27,6 +32,15 @@ namespace SimpleReminders
             _settingsService = new SettingsService();
             _notificationWindowManager = new NotificationWindowManager(_settingsService);
             _startupService = new StartupService();
+
+            // Optimization: Set process priority to High to ensure the OS gives us CPU time during heavy gaming
+            using (var process = System.Diagnostics.Process.GetCurrentProcess())
+            {
+                process.PriorityClass = System.Diagnostics.ProcessPriorityClass.High;
+            }
+
+            // Optimization: Disable ghosting so Windows doesn't try to "help" if the UI thread is briefly busy
+            DisableProcessWindowsGhosting();
 
             // Enable startup by default on first run
             if (!_settingsService.Settings.HasInitializedStartup)
@@ -91,10 +105,12 @@ namespace SimpleReminders
 
         private void OnReminderDue(object? sender, Models.Reminder reminder)
         {
-            // Marshal to UI thread
+            // Play sound on a background thread to prevent any I/O blocking from causing lag spikes
+            System.Threading.Tasks.Task.Run(() => PlaySound(reminder.SoundPath));
+
+            // Marshal UI creation to UI thread
             _uiContext.BeginInvoke(new Action(() =>
             {
-                PlaySound(reminder.SoundPath);
                 _notificationWindowManager.ShowNotification(reminder);
             }));
         }
