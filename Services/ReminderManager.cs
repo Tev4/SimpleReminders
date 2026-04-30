@@ -42,7 +42,7 @@ namespace SimpleReminders.Services
             var now = DateTime.Now;
 
             var nextReminder = _reminders
-                .Where(r => r.IsRecurring || !r.IsPassed)
+                .Where(r => r.IsEnabled && (r.IsRecurring || !r.IsPassed))
                 .OrderBy(r => r.DueDate)
                 .FirstOrDefault();
 
@@ -70,7 +70,7 @@ namespace SimpleReminders.Services
             foreach (var reminder in _reminders)
             {
                 // If the reminder is in the past and NOT marked as passed, it's a missed occurrence
-                if (reminder.DueDate <= now && !reminder.IsPassed && reminder.FireIfMissed)
+                if (reminder.IsEnabled && reminder.DueDate <= now && !reminder.IsPassed && reminder.FireIfMissed)
                 {
                     ReminderDue?.Invoke(this, reminder);
                     triggerAny = true;
@@ -221,7 +221,7 @@ namespace SimpleReminders.Services
             var now = DateTime.Now;
 
             var dueReminders = _reminders
-                .Where(r => r.DueDate <= now && (!r.IsPassed || r.IsRecurring))
+                .Where(r => r.IsEnabled && r.DueDate <= now && (!r.IsPassed || r.IsRecurring))
                 .ToList();
 
             foreach (var reminder in dueReminders)

@@ -62,7 +62,7 @@ namespace SimpleReminders.Forms
 
             int preferredWidth = reminder.Width > 0 ? reminder.Width : 250;
             int preferredHeight = reminder.Height > 0 ? reminder.Height : 0;
-            int height = preferredHeight > 0 ? preferredHeight : Math.Max(80, textSize.Height + 40);
+            int height = Math.Max(Math.Max(80, preferredHeight), textSize.Height + 40);
             this.Size = new Size(preferredWidth, height);
 
             if (_reminder.AutoFade)
@@ -102,13 +102,16 @@ namespace SimpleReminders.Forms
                 e.Graphics.DrawRectangle(pen, 0, 0, this.Width - 1, this.Height - 1);
             }
             
+            var rect = this.ClientRectangle;
+            rect.Inflate(-10, -5); // Add horizontal and vertical padding
+            
             TextRenderer.DrawText(
                 e.Graphics, 
                 _message, 
                 _currentFont, 
-                this.ClientRectangle, 
+                rect, 
                 _fontColor, 
-                TextFormatFlags.WordBreak | TextFormatFlags.VerticalCenter | TextFormatFlags.HorizontalCenter
+                TextFormatFlags.WordBreak | TextFormatFlags.VerticalCenter | TextFormatFlags.HorizontalCenter | TextFormatFlags.TextBoxControl
             );
         }
 

@@ -13,9 +13,10 @@ namespace SimpleReminders.Forms
     {
         public DoubleBufferedListBox()
         {
-            // Enable double buffering
+            // Enable double buffering and resize redraw
             this.SetStyle(ControlStyles.OptimizedDoubleBuffer | 
-                        ControlStyles.AllPaintingInWmPaint, true);
+                        ControlStyles.AllPaintingInWmPaint |
+                        ControlStyles.ResizeRedraw, true);
             this.UpdateStyles();
         }
     }
@@ -76,7 +77,7 @@ namespace SimpleReminders.Forms
 
                 var brush = (e.State & DrawItemState.Selected) == DrawItemState.Selected 
                     ? System.Drawing.Brushes.White 
-                    : (reminder.IsPassed ? System.Drawing.Brushes.Gray : System.Drawing.Brushes.Black);
+                    : ((reminder.IsPassed || !reminder.IsEnabled) ? System.Drawing.Brushes.Gray : System.Drawing.Brushes.Black);
                 e.Graphics.DrawString(reminder.ToString(), e.Font!, brush, e.Bounds);
 
                 // Draw days info on the right
@@ -150,6 +151,15 @@ namespace SimpleReminders.Forms
 
                 // Remember the mouse down location for drag detection
                 _mouseDownLocation = e.Location;
+
+                // Select item on right click if not already selected
+                if (e.Button == MouseButtons.Right)
+                {
+                    if (index >= 0)
+                    {
+                        _remindersList.SelectedIndex = index;
+                    }
+                }
             };
 
             _remindersList.MouseMove += (s, e) =>
@@ -321,6 +331,74 @@ namespace SimpleReminders.Forms
             // Adjust layout to be below MenuStrip
             layout.Padding = new Padding(10, _menuStrip.Height + 10, 10, 10);
             this.Controls.Add(layout);
+
+            // Context Menu
+            var contextMenu = new ContextMenuStrip();
+            var addReminderMenuItem = new ToolStripMenuItem("Add Reminder") { Image = IconService.GetAddIcon() };
+            addReminderMenuItem.Click += AddReminder;
+
+            var toggleEnableMenuItem = new ToolStripMenuItem("Disable/Enable");
+            toggleEnableMenuItem.Click += (s, e) =>
+            {
+                if (_remindersList.SelectedItem is Reminder reminder)
+                {
+                    int selectedIndex = _remindersList.SelectedIndex;
+                    reminder.IsEnabled = !reminder.IsEnabled;
+                    _reminderManager.Update(reminder);
+                    RefreshList();
+                    if (selectedIndex >= 0 && selectedIndex < _remindersList.Items.Count)
+                    {
+                        _remindersList.SelectedIndex = selectedIndex;
+                    }
+                }
+            };
+
+            var editMenuItem = new ToolStripMenuItem("Edit") { Image = IconService.GetEditIcon() };
+            editMenuItem.Click += EditReminder;
+
+            var triggerMenuItem = new ToolStripMenuItem("Trigger Now") { Image = IconService.GetTriggerIcon() };
+            triggerMenuItem.Click += TriggerDebug;
+
+            var duplicateMenuItem = new ToolStripMenuItem("Duplicate") { Image = IconService.GetDuplicateIcon() };
+            duplicateMenuItem.Click += DuplicateReminder;
+
+            var deleteMenuItem = new ToolStripMenuItem("Delete") { Image = IconService.GetDeleteIcon() };
+            deleteMenuItem.Click += DeleteReminder;
+
+            var contextMenuSep = new ToolStripSeparator();
+
+            contextMenu.Items.Add(addReminderMenuItem);
+            contextMenu.Items.Add(contextMenuSep);
+            contextMenu.Items.Add(editMenuItem);
+            contextMenu.Items.Add(triggerMenuItem);
+            var itemSep = new ToolStripSeparator();
+            contextMenu.Items.Add(itemSep);
+            contextMenu.Items.Add(toggleEnableMenuItem);
+            contextMenu.Items.Add(duplicateMenuItem);
+            contextMenu.Items.Add(deleteMenuItem);
+
+            contextMenu.Opening += (s, e) =>
+            {
+                bool hasSelection = _remindersList.SelectedItem is Reminder;
+                
+                addReminderMenuItem.Visible = !hasSelection;
+                contextMenuSep.Visible = false; // Always hide the top separator as it's redundant when switching views
+
+                editMenuItem.Visible = hasSelection;
+                triggerMenuItem.Visible = hasSelection;
+                itemSep.Visible = hasSelection;
+                toggleEnableMenuItem.Visible = hasSelection;
+                duplicateMenuItem.Visible = hasSelection;
+                deleteMenuItem.Visible = hasSelection;
+
+                if (hasSelection && _remindersList.SelectedItem is Reminder reminder)
+                {
+                    toggleEnableMenuItem.Text = reminder.IsEnabled ? "Disable" : "Enable";
+                    toggleEnableMenuItem.Image = IconService.GetToggleIcon(reminder.IsEnabled);
+                }
+            };
+
+            _remindersList.ContextMenuStrip = contextMenu;
         }
 
         private void RefreshList()
@@ -331,6 +409,31 @@ namespace SimpleReminders.Forms
             {
                 _remindersList.Items.Add(r); 
             }
+            UpdateMinimumWidth();
+        }
+
+        private void UpdateMinimumWidth()
+        {
+            float maxWidth = 0;
+            using (var g = this.CreateGraphics())
+            {
+                var font = _remindersList.Font;
+                foreach (Reminder r in _remindersList.Items)
+                {
+                    string titleText = r.ToString();
+                    string daysText = GetDaysDisplayString(r);
+                    
+                    float titleWidth = g.MeasureString(titleText, font).Width;
+                    float daysWidth = string.IsNullOrEmpty(daysText) ? 0 : g.MeasureString(daysText, font).Width;
+                    
+                    // Title + 20px gap + Days + 40px for scrollbar/margins
+                    float totalWidth = titleWidth + daysWidth + 60;
+                    if (totalWidth > maxWidth) maxWidth = totalWidth;
+                }
+            }
+
+            int minWidth = Math.Max(455, (int)Math.Ceiling(maxWidth + 40)); // padding for the form
+            this.MinimumSize = new System.Drawing.Size(minWidth, 400);
         }
 
         private void AddReminder(object? sender, EventArgs e)
@@ -426,6 +529,7 @@ namespace SimpleReminders.Forms
                     DueDate = selectedReminder.DueDate,
                     EnabledDays = new List<DayOfWeek>(selectedReminder.EnabledDays),
                     IsPassed = selectedReminder.IsPassed,
+                    IsEnabled = selectedReminder.IsEnabled,
                     SoundPath = selectedReminder.SoundPath
                 };
 

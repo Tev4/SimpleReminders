@@ -81,6 +81,10 @@ namespace SimpleReminders.Forms
 
             InitializeComponent();
             LoadData();
+            this.Load += (s, e) => {
+                UpdateMessageBoxHeight();
+                this.ActiveControl = _titleBox;
+            };
         }
 
         private void InitializeComponent()
@@ -93,7 +97,7 @@ namespace SimpleReminders.Forms
             this.MaximizeBox = false;
 
             var layout = new TableLayoutPanel();
-            layout.Dock = DockStyle.Fill;
+            layout.Dock = DockStyle.Top; // Keep Top so it can grow downwards
             layout.Padding = new Padding(10);
             layout.RowCount = 16;
             layout.ColumnCount = 2;
@@ -108,11 +112,28 @@ namespace SimpleReminders.Forms
             // Title
             layout.Controls.Add(new Label { Text = "Title:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 0);
             _titleBox = new TextBox { Width = 250 };
+            _titleBox.MaxLength = 100;
+            // Prevent mouse pointer from hiding while typing
+            _titleBox.KeyPress += (s, e) => { Cursor.Position = Cursor.Position; };
+            _titleBox.MouseWheel += (s, e) => ForwardScrollToParent(s, e);
             layout.Controls.Add(_titleBox, 1, 0);
 
             // Message
             layout.Controls.Add(new Label { Text = "Message:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 1);
-            _messageBox = new TextBox { Width = 250 };
+            
+            _messageBox = new TextBox { 
+                Multiline = true, 
+                AcceptsReturn = true,
+                Width = 250, 
+                Height = 23, 
+                ScrollBars = ScrollBars.None, // Hide scrollbars since it grows
+                MaxLength = 1000 
+            };
+
+            // Prevent mouse pointer from hiding while typing
+            _messageBox.KeyPress += (s, e) => { Cursor.Position = Cursor.Position; };
+
+            _messageBox.TextChanged += (s, e) => UpdateMessageBoxHeight();
             layout.Controls.Add(_messageBox, 1, 1);
 
             // Due Date
@@ -131,6 +152,10 @@ namespace SimpleReminders.Forms
             _daysNum = new NumericUpDown { Maximum = 365, DecimalPlaces = 0, Width = 60 };
             _hoursNum = new NumericUpDown { Maximum = 23, DecimalPlaces = 0, Width = 60 };
             _minutesNum = new NumericUpDown { Maximum = 59, DecimalPlaces = 0, Width = 60 };
+            
+            _daysNum.MouseWheel += (s, e) => ForwardScrollToParent(s, e);
+            _hoursNum.MouseWheel += (s, e) => ForwardScrollToParent(s, e);
+            _minutesNum.MouseWheel += (s, e) => ForwardScrollToParent(s, e);
             
             recurTable.Controls.Add(new Label { Text = "Days:", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
             recurTable.Controls.Add(_daysNum, 1, 0);
@@ -199,8 +224,90 @@ namespace SimpleReminders.Forms
             }
             layout.Controls.Add(_daysPanel, 1, 6);
 
+            // Auto-fade
+            layout.Controls.Add(new Label { Text = "Auto-fade:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 7);
+            var fadePanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left, WrapContents = false };
+            _autoFadeCheck = new CheckBox { Text = "Fade away after", AutoSize = true, Margin = new Padding(0, 5, 5, 0) };
+            _displayDurationNum = new NumericUpDown { Minimum = 1, Maximum = 3600, Width = 60 };
+            _displayDurationNum.MouseWheel += (s, e) => ForwardScrollToParent(s, e);
+            var secLabel = new Label { Text = "seconds", AutoSize = true, Margin = new Padding(0, 5, 0, 0) };
+            _autoFadeCheck.CheckedChanged += (s, e) => _displayDurationNum.Enabled = _autoFadeCheck.Checked;
+            fadePanel.Controls.Add(_autoFadeCheck);
+            fadePanel.Controls.Add(_displayDurationNum);
+            fadePanel.Controls.Add(secLabel);
+            layout.Controls.Add(fadePanel, 1, 7);
+            
+            // Show on startup if missed
+            layout.Controls.Add(new Label { Text = "Show on startup if missed:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 8);
+            _fireIfMissedCheck = new CheckBox {};
+            layout.Controls.Add(_fireIfMissedCheck, 1, 8);
+
+            // Advanced Options Toggle
+            var advancedToggle = new Panel { 
+                Height = 40,
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 10, 0, 0),
+                Dock = DockStyle.Fill
+            };
+            var arrowLabel = new Label { 
+                Text = ">", 
+                AutoSize = false, 
+                Width = 16,
+                Height = 20,
+                Location = new Point(0, 10),
+                TextAlign = ContentAlignment.MiddleLeft,
+                Font = new Font(this.Font, FontStyle.Regular),
+                Cursor = Cursors.Hand
+            };
+            var toggleLabel = new Label { 
+                Text = "Advanced options", 
+                AutoSize = true, 
+                Location = new Point(16, 12),
+                Font = new Font(this.Font, FontStyle.Regular),
+                Cursor = Cursors.Hand
+            };
+            advancedToggle.Controls.Add(arrowLabel);
+            advancedToggle.Controls.Add(toggleLabel);
+
+            advancedToggle.Paint += (s, e) => {
+                int lineY = toggleLabel.Top + (toggleLabel.Height / 2) + 1;
+                int startX = toggleLabel.Right + 10;
+                using (var pen = new Pen(Color.FromArgb(200, 200, 200), 1))
+                {
+                    e.Graphics.DrawLine(pen, startX, lineY, advancedToggle.Width - 5, lineY);
+                }
+            };
+            
+            layout.SetColumnSpan(advancedToggle, 2);
+            layout.Controls.Add(advancedToggle, 0, 9);
+
+            var advancedPanel = new TableLayoutPanel { 
+                ColumnCount = 2, 
+                AutoSize = true, 
+                Visible = false,
+                Padding = new Padding(20, 10, 0, 10),
+                Dock = DockStyle.Fill
+            };
+            advancedPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150F));
+            advancedPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            layout.SetColumnSpan(advancedPanel, 2);
+            layout.Controls.Add(advancedPanel, 0, 10);
+
+            // Toggle logic for both the panel and the label
+            void ToggleAdvanced() {
+                advancedPanel.Visible = !advancedPanel.Visible;
+                arrowLabel.Text = advancedPanel.Visible ? "v" : ">";
+                arrowLabel.Top = advancedPanel.Visible ? 9 : 10; // Nudge 'v' up further for alignment
+                advancedToggle.Invalidate(); 
+            }
+            advancedToggle.Click += (s, e) => ToggleAdvanced();
+            toggleLabel.Click += (s, e) => ToggleAdvanced();
+            arrowLabel.Click += (s, e) => ToggleAdvanced();
+
+            int advRow = 0;
+
             // Background Color
-            layout.Controls.Add(new Label { Text = "Background Color:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 7);
+            advancedPanel.Controls.Add(new Label { Text = "Background Color:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, advRow);
             var bgPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left, WrapContents = false };
             _bgColorBtn = new Button { Text = "", Width = 60 };
             _bgColorBtn.Click += (s, e) => PickColor(_bgColorBtn, true);
@@ -213,10 +320,10 @@ namespace SimpleReminders.Forms
             };
             bgPanel.Controls.Add(_bgColorBtn);
             bgPanel.Controls.Add(_resetBgColorBtn);
-            layout.Controls.Add(bgPanel, 1, 7);
+            advancedPanel.Controls.Add(bgPanel, 1, advRow++);
 
             // Text Color
-            layout.Controls.Add(new Label { Text = "Text Color:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 8);
+            advancedPanel.Controls.Add(new Label { Text = "Text Color:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, advRow);
             var fgPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left, WrapContents = false };
             _fontColorBtn = new Button { Text = "", Width = 60 };
             _fontColorBtn.Click += (s, e) => PickColor(_fontColorBtn, false);
@@ -229,12 +336,13 @@ namespace SimpleReminders.Forms
             };
             fgPanel.Controls.Add(_fontColorBtn);
             fgPanel.Controls.Add(_resetFontColorBtn);
-            layout.Controls.Add(fgPanel, 1, 8);
+            advancedPanel.Controls.Add(fgPanel, 1, advRow++);
 
             // Font Size
-            layout.Controls.Add(new Label { Text = "Font Size:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 9);
+            advancedPanel.Controls.Add(new Label { Text = "Font Size:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, advRow);
             var sizeInfoPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left, WrapContents = false };
             _fontSizeNum = new NumericUpDown { Minimum = 8, Maximum = 72, Width = 60 };
+            _fontSizeNum.MouseWheel += (s, e) => ForwardScrollToParent(s, e);
             _fontSizeNum.ValueChanged += (s, e) => UpdateResetButtonVisibilities();
             _resetFontSizeBtn = CreateResetButton();
             _resetFontSizeBtn.Click += (s, e) => {
@@ -243,50 +351,40 @@ namespace SimpleReminders.Forms
             };
             sizeInfoPanel.Controls.Add(_fontSizeNum);
             sizeInfoPanel.Controls.Add(_resetFontSizeBtn);
-            layout.Controls.Add(sizeInfoPanel, 1, 9);
+            advancedPanel.Controls.Add(sizeInfoPanel, 1, advRow++);
             
             // Font Family
-            layout.Controls.Add(new Label { Text = "Font Family:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 10);
+            advancedPanel.Controls.Add(new Label { Text = "Font Family:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, advRow);
             var fontPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left };
             _fontFamilyCombo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 180 };
-            _resetFontBtn = new Button { 
-                Text = "✕", 
-                Width = 25, 
-                Height = 25,
-                FlatStyle = FlatStyle.Flat, 
-                ForeColor = Color.Red,
-                Cursor = Cursors.Hand,
-                Margin = new Padding(0, 3, 0, 0),
-                TabStop = false
-            };
-            _resetFontBtn.FlatAppearance.BorderSize = 0;
-            _resetFontBtn.FlatAppearance.MouseOverBackColor = Color.FromArgb(240, 240, 240);
+            _resetFontBtn = CreateResetButton();
             _resetFontBtn.Click += (s, e) => {
                 string defaultFont = _settingsService.Settings.DefaultFontFamily;
                 int defaultIndex = _fontFamilyCombo.FindStringExact(defaultFont);
                 _fontFamilyCombo.SelectedIndex = defaultIndex >= 0 ? defaultIndex : 0;
                 _fontFamilyCombo.Focus();
             };
-
-            // Populate fonts
-            foreach (var family in FontFamily.Families)
-            {
-                _fontFamilyCombo.Items.Add(family.Name);
-            }
+            foreach (var family in FontFamily.Families) _fontFamilyCombo.Items.Add(family.Name);
             _fontFamilyCombo.SelectedIndexChanged += (s, e) => {
                 string selectedFont = _fontFamilyCombo.SelectedItem?.ToString() ?? "";
                 _resetFontBtn.Visible = selectedFont != _settingsService.Settings.DefaultFontFamily;
             };
-
+            _fontFamilyCombo.MouseWheel += (s, e) => {
+                if (!_fontFamilyCombo.DroppedDown) {
+                    ForwardScrollToParent(s, e);
+                }
+            };
             fontPanel.Controls.Add(_fontFamilyCombo);
             fontPanel.Controls.Add(_resetFontBtn);
-            layout.Controls.Add(fontPanel, 1, 10);
+            advancedPanel.Controls.Add(fontPanel, 1, advRow++);
 
-            // Size
-            layout.Controls.Add(new Label { Text = "Notification Size (W x H):", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 11);
+            // Notification Size
+            advancedPanel.Controls.Add(new Label { Text = "Notification Size (W x H):", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, advRow);
             var sizePanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left, WrapContents = false };
             _widthNum = new NumericUpDown { Minimum = 100, Maximum = 1000, Width = 60 };
             _heightNum = new NumericUpDown { Minimum = 40, Maximum = 1000, Width = 60 };
+            _widthNum.MouseWheel += (s, e) => ForwardScrollToParent(s, e);
+            _heightNum.MouseWheel += (s, e) => ForwardScrollToParent(s, e);
             _widthNum.ValueChanged += (s, e) => UpdateResetButtonVisibilities();
             _heightNum.ValueChanged += (s, e) => UpdateResetButtonVisibilities();
             _resetSizeBtn = CreateResetButton();
@@ -299,25 +397,14 @@ namespace SimpleReminders.Forms
             sizePanel.Controls.Add(new Label { Text = "x", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 5, 0, 0) });
             sizePanel.Controls.Add(_heightNum);
             sizePanel.Controls.Add(_resetSizeBtn);
-            layout.Controls.Add(sizePanel, 1, 11);
+            advancedPanel.Controls.Add(sizePanel, 1, advRow++);
 
             // Sound
-            layout.Controls.Add(new Label { Text = "Notification Sound:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 12);
+            advancedPanel.Controls.Add(new Label { Text = "Notification Sound:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, advRow);
             var soundPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left, WrapContents = false };
             _soundBtn = new Button { Text = "Browse", Width = 80 };
             _soundBtn.Click += (s, e) => PickSound();
-            _resetSoundBtn = new Button { 
-                Text = "✕", 
-                Width = 25, 
-                Height = 25,
-                FlatStyle = FlatStyle.Flat, 
-                ForeColor = Color.Red,
-                Cursor = Cursors.Hand,
-                Margin = new Padding(0, 3, 0, 0),
-                TabStop = false
-            };
-            _resetSoundBtn.FlatAppearance.BorderSize = 0;
-            _resetSoundBtn.FlatAppearance.MouseOverBackColor = Color.FromArgb(240, 240, 240);
+            _resetSoundBtn = CreateResetButton();
             _resetSoundBtn.Click += (s, e) => {
                 Reminder.SoundPath = _settingsService.Settings.DefaultSoundPath;
                 UpdateSoundLabel();
@@ -327,26 +414,7 @@ namespace SimpleReminders.Forms
             soundPanel.Controls.Add(_soundBtn);
             soundPanel.Controls.Add(_resetSoundBtn);
             soundPanel.Controls.Add(_soundLabel);
-            layout.Controls.Add(soundPanel, 1, 12);
-            
-            // Auto-fade
-            layout.Controls.Add(new Label { Text = "Auto-fade:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 13);
-            var fadePanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left, WrapContents = false };
-            _autoFadeCheck = new CheckBox { Text = "Fade away after", AutoSize = true, Margin = new Padding(0, 5, 5, 0) };
-            _displayDurationNum = new NumericUpDown { Minimum = 1, Maximum = 3600, Width = 60 };
-            var secLabel = new Label { Text = "seconds", AutoSize = true, Margin = new Padding(0, 5, 0, 0) };
-            
-            _autoFadeCheck.CheckedChanged += (s, e) => _displayDurationNum.Enabled = _autoFadeCheck.Checked;
-            
-            fadePanel.Controls.Add(_autoFadeCheck);
-            fadePanel.Controls.Add(_displayDurationNum);
-            fadePanel.Controls.Add(secLabel);
-            layout.Controls.Add(fadePanel, 1, 13);
-            
-            // Fire If Missed
-            layout.Controls.Add(new Label { Text = "Fire If Missed:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 14);
-            _fireIfMissedCheck = new CheckBox {};
-            layout.Controls.Add(_fireIfMissedCheck, 1, 14);
+            advancedPanel.Controls.Add(soundPanel, 1, advRow++);
 
             // Buttons
             var btnPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Bottom, Height = 40 };
@@ -370,8 +438,15 @@ namespace SimpleReminders.Forms
             btnPanel.Controls.Add(_cancelButton);
             btnPanel.Controls.Add(_saveButton);
 
+            var contentPanel = new Panel { 
+                Dock = DockStyle.Fill, 
+                AutoScroll = true,
+                Padding = new Padding(0, 0, 0, 10) 
+            };
+            contentPanel.Controls.Add(layout);
+
+            this.Controls.Add(contentPanel);
             this.Controls.Add(btnPanel);
-            this.Controls.Add(layout);
         }
 
         private void LoadData()
@@ -398,6 +473,12 @@ namespace SimpleReminders.Forms
             _displayDurationNum.Value = Math.Max(_displayDurationNum.Minimum, Math.Min(_displayDurationNum.Maximum, Reminder.DisplayDurationSeconds));
             _displayDurationNum.Enabled = Reminder.AutoFade;
             _fireIfMissedCheck.Checked = Reminder.FireIfMissed;
+
+            // Auto-size the message box height to fit content
+            if (!string.IsNullOrEmpty(Reminder.Message))
+            {
+                _messageBox.Text = Reminder.Message; // This triggers the TextChanged event
+            }
 
             string targetFont = !string.IsNullOrEmpty(Reminder.FontFamily) 
                 ? Reminder.FontFamily 
@@ -539,6 +620,73 @@ namespace SimpleReminders.Forms
             return btn;
         }
 
+        private int _cachedLineHeight = 0;
+        private void UpdateMessageBoxHeight()
+        {
+            if (_messageBox == null || _messageBox.IsDisposed || !_messageBox.IsHandleCreated) return;
+
+            const int EM_GETLINECOUNT = 0x00BA;
+            const int WM_SETREDRAW = 0x000B;
+            
+            IntPtr handle = _messageBox.Handle;
+            int lineCount = SendMessage(handle, EM_GETLINECOUNT, 0, 0);
+            
+            if (_cachedLineHeight == 0)
+            {
+                using (var g = _messageBox.CreateGraphics())
+                {
+                    _cachedLineHeight = TextRenderer.MeasureText(g, "Wg", _messageBox.Font, new Size(100, 1000), TextFormatFlags.TextBoxControl).Height;
+                }
+            }
+
+            int padding = 6; 
+            int calculatedHeight = (lineCount * _cachedLineHeight) + padding;
+            int maxHeight = (10 * _cachedLineHeight) + padding;
+            int finalHeight = Math.Max(23, Math.Min(maxHeight, calculatedHeight));
+            ScrollBars neededBars = lineCount > 10 ? ScrollBars.Vertical : ScrollBars.None;
+            
+            if (_messageBox.Height != finalHeight || _messageBox.ScrollBars != neededBars)
+            {
+                SendMessage(handle, WM_SETREDRAW, 0, 0);
+                // We need to find the layout panel. It's a bit awkward but we can use Parent.
+                var layout = _messageBox.Parent as TableLayoutPanel;
+                layout?.SuspendLayout();
+                
+                if (_messageBox.Height != finalHeight)
+                    _messageBox.Height = finalHeight;
+
+                if (_messageBox.ScrollBars != neededBars)
+                {
+                    this.BeginInvoke(new Action(() => {
+                        if (!_messageBox.IsDisposed)
+                            _messageBox.ScrollBars = neededBars;
+                    }));
+                }
+
+                layout?.ResumeLayout(true);
+                SendMessage(handle, WM_SETREDRAW, 1, 0);
+                _messageBox.Invalidate();
+            }
+        }
+
+        private void ForwardScrollToParent(object? sender, MouseEventArgs e)
+        {
+            ((HandledMouseEventArgs)e).Handled = true;
+            Control? control = sender as Control;
+            Control? parent = control?.Parent;
+            while (parent != null)
+            {
+                if (parent is Panel p && p.AutoScroll)
+                {
+                    const int WM_MOUSEWHEEL = 0x020A;
+                    IntPtr wParam = (IntPtr)((e.Delta << 16) | (ushort)Control.ModifierKeys);
+                    SendMessage(parent.Handle, WM_MOUSEWHEEL, (int)wParam, 0);
+                    break;
+                }
+                parent = parent.Parent;
+            }
+        }
+
         private void UpdateResetButtonVisibilities()
         {
             var settings = _settingsService.Settings;
@@ -566,5 +714,8 @@ namespace SimpleReminders.Forms
                 UpdateSoundLabel();
             }
         }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern int SendMessage(IntPtr hWnd, int msg, int wParam, int lParam);
     }
 }

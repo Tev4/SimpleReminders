@@ -104,8 +104,8 @@ namespace SimpleReminders.Services
                 return TextRenderer.MeasureText(
                     reminder.Message, 
                     font, 
-                    new Size(width, 0), 
-                    TextFormatFlags.WordBreak | TextFormatFlags.VerticalCenter | TextFormatFlags.HorizontalCenter
+                    new Size(width - 20, 0), 
+                    TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl
                 );
             });
 

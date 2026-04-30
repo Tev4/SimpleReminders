@@ -7,8 +7,18 @@ namespace SimpleReminders.Models
     public class Reminder
     {
         public Guid Id { get; set; } = Guid.NewGuid();
-        public string Title { get; set; } = string.Empty;
-        public string Message { get; set; } = string.Empty;
+        private string _title = string.Empty;
+        public string Title 
+        { 
+            get => _title; 
+            set => _title = value?.Length > 100 ? value.Substring(0, 100) : value ?? string.Empty; 
+        }
+        private string _message = string.Empty;
+        public string Message 
+        { 
+            get => _message; 
+            set => _message = value?.Length > 1000 ? value.Substring(0, 1000) : value ?? string.Empty; 
+        }
         
         // Customization
         public string BackgroundColor { get; set; } = "#005FB8";
@@ -30,6 +40,9 @@ namespace SimpleReminders.Models
 
         // Due date passed
         public bool IsPassed { get; set; } = false;
+
+        // Is the reminder enabled
+        public bool IsEnabled { get; set; } = true;
         
         // Sound
         public string SoundPath { get; set; } = string.Empty; // Path to custom sound or null for default
