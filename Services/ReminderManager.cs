@@ -70,7 +70,7 @@ namespace SimpleReminders.Services
             foreach (var reminder in _reminders)
             {
                 // If the reminder is in the past and NOT marked as passed, it's a missed occurrence
-                if (reminder.IsEnabled && reminder.DueDate <= now && !reminder.IsPassed && reminder.FireIfMissed)
+                if (reminder.IsEnabled && reminder.DueDate <= now && !reminder.IsPassed && reminder.ShowOnStartupIfMissed)
                 {
                     ReminderDue?.Invoke(this, reminder);
                     triggerAny = true;

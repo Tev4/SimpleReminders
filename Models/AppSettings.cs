@@ -3,6 +3,14 @@ using System.Collections.Generic;
 
 namespace SimpleReminders.Models
 {
+    public enum NotificationAnchor
+    {
+        TopLeft,
+        TopRight,
+        BottomLeft,
+        BottomRight
+    }
+
     public class AppSettings
     {
         public bool StartMinimized { get; set; } = true;
@@ -17,10 +25,11 @@ namespace SimpleReminders.Models
         public int DefaultHeight { get; set; } = 80;
         public int DefaultOffsetX { get; set; } = 0;
         public int DefaultOffsetY { get; set; } = 0;
+        public NotificationAnchor DefaultAnchor { get; set; } = NotificationAnchor.BottomRight;
         public string DefaultSoundPath { get; set; } = string.Empty;
         public bool DefaultAutoFade { get; set; } = true;
         public int DefaultFadeDelay { get; set; } = 15;
-        public bool DefaultFireIfMissed { get; set; } = false;
+        public bool DefaultShowOnStartupIfMissed { get; set; } = false;
 
         public List<ExecutableOffsetRule> ExecutableOffsets { get; set; } = new List<ExecutableOffsetRule>();
     }

@@ -37,6 +37,9 @@ namespace SimpleReminders.Services
         private string? _lastActivePath;
         private int _currentOffsetX;
         private int _currentOffsetY;
+        private int _currentWidth;
+        private int _currentHeight;
+        private NotificationAnchor _currentAnchor;
 
         public NotificationWindowManager(SettingsService settingsService)
         {
@@ -82,7 +85,7 @@ namespace SimpleReminders.Services
             if (string.IsNullOrEmpty(fontFamily))
                 fontFamily = "Segoe UI Variable Display";
 
-            int width = reminder.Width > 0 ? reminder.Width : 250;
+            int width = reminder.Width > 0 ? reminder.Width : _currentWidth;
             float fontSize = reminder.FontSize;
 
             Font? capturedFont = null;
@@ -155,22 +158,47 @@ namespace SimpleReminders.Services
         private async Task RepositionNotificationsAsync()
         {
             var screen = Screen.PrimaryScreen;
-            if (screen == null) return; // handle null screen
+            if (screen == null) return;
 
             var workingArea = screen.WorkingArea;
-            int currentY = workingArea.Bottom - _bottomOffset - _currentOffsetY;
+            var anchor = _currentAnchor;
 
+            int currentY;
+            bool stackUpwards = (anchor == NotificationAnchor.BottomRight || anchor == NotificationAnchor.BottomLeft);
+            
+            if (stackUpwards)
+                currentY = workingArea.Bottom - _bottomOffset - _currentOffsetY;
+            else
+                currentY = workingArea.Top + _bottomOffset + _currentOffsetY;
+
+            // Loop in reverse order to keep newest notifications closest to the anchor point
             for (int i = _openNotifications.Count - 1; i >= 0; i--)
             {
                 var form = _openNotifications[i];
                 if (form.IsDisposed) continue;
 
-                int x = workingArea.Right - form.Width - _rightOffset + _currentOffsetX;
-                int y = currentY - form.Height;
+                int x;
+                int y;
+
+                // X calculation
+                if (anchor == NotificationAnchor.BottomRight || anchor == NotificationAnchor.TopRight)
+                    x = workingArea.Right - form.Width - _rightOffset + _currentOffsetX;
+                else // Left anchors
+                    x = workingArea.Left + _rightOffset + _currentOffsetX;
+
+                // Y calculation and stacking
+                if (stackUpwards)
+                {
+                    y = currentY - form.Height;
+                    currentY = y - _spacing;
+                }
+                else // Stack downwards
+                {
+                    y = currentY;
+                    currentY = y + form.Height + _spacing;
+                }
                 
                 form.Location = new Point(x, y);
-                
-                currentY = y - _spacing;
             }
         }
 
@@ -195,6 +223,16 @@ namespace SimpleReminders.Services
                     offsetX += rule.XOffset;
                     offsetY += rule.YOffset;
                 }
+
+                _currentWidth = (rule != null && rule.Width > 0) ? rule.Width : _settingsService.Settings.DefaultWidth;
+                _currentHeight = (rule != null && rule.Height > 0) ? rule.Height : _settingsService.Settings.DefaultHeight;
+                _currentAnchor = (rule != null) ? rule.Anchor : _settingsService.Settings.DefaultAnchor;
+            }
+            else
+            {
+                _currentWidth = _settingsService.Settings.DefaultWidth;
+                _currentHeight = _settingsService.Settings.DefaultHeight;
+                _currentAnchor = _settingsService.Settings.DefaultAnchor;
             }
 
             _currentOffsetX = offsetX;

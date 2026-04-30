@@ -34,11 +34,12 @@ namespace SimpleReminders.Forms
         private Button _soundBtn = null!;
         private Button _resetSoundBtn = null!;
         private Label _soundLabel = null!;
-        private CheckBox _fireIfMissedCheck = null!;
+        private CheckBox _showOnStartupIfMissedCheck = null!;
         private CheckBox _autoFadeCheck = null!;
         private NumericUpDown _displayDurationNum = null!;
         private Button _saveButton = null!;
         private Button _cancelButton = null!;
+        private string _tempSoundPath = string.Empty;
 
         private CheckBox _specificDaysCheck = null!;
         private FlowLayoutPanel _daysPanel = null!;
@@ -70,7 +71,7 @@ namespace SimpleReminders.Forms
                     Width = settings.DefaultWidth,
                     Height = settings.DefaultHeight,
                     SoundPath = settings.DefaultSoundPath,
-                    FireIfMissed = settings.DefaultFireIfMissed,
+                    ShowOnStartupIfMissed = settings.DefaultShowOnStartupIfMissed,
                     DueDate = DateTime.Now.AddMinutes(5)
                 };
             }
@@ -239,8 +240,8 @@ namespace SimpleReminders.Forms
             
             // Show on startup if missed
             layout.Controls.Add(new Label { Text = "Show on startup if missed:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 8);
-            _fireIfMissedCheck = new CheckBox {};
-            layout.Controls.Add(_fireIfMissedCheck, 1, 8);
+            _showOnStartupIfMissedCheck = new CheckBox {};
+            layout.Controls.Add(_showOnStartupIfMissedCheck, 1, 8);
 
             // Advanced Options Toggle
             var advancedToggle = new Panel { 
@@ -381,8 +382,8 @@ namespace SimpleReminders.Forms
             // Notification Size
             advancedPanel.Controls.Add(new Label { Text = "Notification Size (W x H):", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, advRow);
             var sizePanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left, WrapContents = false };
-            _widthNum = new NumericUpDown { Minimum = 100, Maximum = 1000, Width = 60 };
-            _heightNum = new NumericUpDown { Minimum = 40, Maximum = 1000, Width = 60 };
+            _widthNum = new NumericUpDown { Minimum = 100, Maximum = 4000, Width = 60 };
+            _heightNum = new NumericUpDown { Minimum = 40, Maximum = 4000, Width = 60 };
             _widthNum.MouseWheel += (s, e) => ForwardScrollToParent(s, e);
             _heightNum.MouseWheel += (s, e) => ForwardScrollToParent(s, e);
             _widthNum.ValueChanged += (s, e) => UpdateResetButtonVisibilities();
@@ -406,9 +407,10 @@ namespace SimpleReminders.Forms
             _soundBtn.Click += (s, e) => PickSound();
             _resetSoundBtn = CreateResetButton();
             _resetSoundBtn.Click += (s, e) => {
-                Reminder.SoundPath = _settingsService.Settings.DefaultSoundPath;
+                _tempSoundPath = _settingsService.Settings.DefaultSoundPath;
                 UpdateSoundLabel();
                 _soundBtn.Focus();
+                CheckForChanges();
             };
             _soundLabel = new Label { Text = "Default", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left };
             soundPanel.Controls.Add(_soundBtn);
@@ -427,13 +429,25 @@ namespace SimpleReminders.Forms
                 this.Close();
             };
 
-            // Button is disabled if title is empty
-            _titleBox.TextChanged += (s, e) =>
-            {
-                _saveButton.Enabled = !string.IsNullOrWhiteSpace(_titleBox.Text);
-            };
-
-            _saveButton.Enabled = !string.IsNullOrWhiteSpace(_titleBox.Text);
+            // Hook up events for change tracking
+            _titleBox.TextChanged += (s, e) => CheckForChanges();
+            _messageBox.TextChanged += (s, e) => CheckForChanges();
+            _dueDatePicker.ValueChanged += (s, e) => CheckForChanges();
+            _recurringCheck.CheckedChanged += (s, e) => CheckForChanges();
+            _daysNum.ValueChanged += (s, e) => CheckForChanges();
+            _hoursNum.ValueChanged += (s, e) => CheckForChanges();
+            _minutesNum.ValueChanged += (s, e) => CheckForChanges();
+            _specificDaysCheck.CheckedChanged += (s, e) => CheckForChanges();
+            foreach (var cb in _dayCheckboxes) cb.CheckedChanged += (s, e) => CheckForChanges();
+            _bgColorBtn.BackColorChanged += (s, e) => CheckForChanges();
+            _fontColorBtn.BackColorChanged += (s, e) => CheckForChanges();
+            _fontSizeNum.ValueChanged += (s, e) => CheckForChanges();
+            _widthNum.ValueChanged += (s, e) => CheckForChanges();
+            _heightNum.ValueChanged += (s, e) => CheckForChanges();
+            _fontFamilyCombo.SelectedIndexChanged += (s, e) => CheckForChanges();
+            _autoFadeCheck.CheckedChanged += (s, e) => CheckForChanges();
+            _displayDurationNum.ValueChanged += (s, e) => CheckForChanges();
+            _showOnStartupIfMissedCheck.CheckedChanged += (s, e) => CheckForChanges();
 
             btnPanel.Controls.Add(_cancelButton);
             btnPanel.Controls.Add(_saveButton);
@@ -472,20 +486,19 @@ namespace SimpleReminders.Forms
             _autoFadeCheck.Checked = Reminder.AutoFade;
             _displayDurationNum.Value = Math.Max(_displayDurationNum.Minimum, Math.Min(_displayDurationNum.Maximum, Reminder.DisplayDurationSeconds));
             _displayDurationNum.Enabled = Reminder.AutoFade;
-            _fireIfMissedCheck.Checked = Reminder.FireIfMissed;
+            _showOnStartupIfMissedCheck.Checked = Reminder.ShowOnStartupIfMissed;
 
             // Auto-size the message box height to fit content
             if (!string.IsNullOrEmpty(Reminder.Message))
             {
                 _messageBox.Text = Reminder.Message; // This triggers the TextChanged event
+                UpdateMessageBoxHeight();
             }
 
-            string targetFont = !string.IsNullOrEmpty(Reminder.FontFamily) 
-                ? Reminder.FontFamily 
-                : _settingsService.Settings.DefaultFontFamily;
-
-            int index = _fontFamilyCombo.FindStringExact(targetFont);
+            int index = _fontFamilyCombo.FindStringExact(Reminder.FontFamily);
             _fontFamilyCombo.SelectedIndex = index >= 0 ? index : 0;
+            
+            _tempSoundPath = Reminder.SoundPath;
 
             UpdateResetButtonVisibilities();
 
@@ -498,10 +511,12 @@ namespace SimpleReminders.Forms
             {
                 _dayCheckboxes[i].Checked = Reminder.EnabledDays?.Contains(_days[i]) ?? false;
             }
-            
+
             UpdateSoundLabel();
 
             ToggleRecurring(Reminder.IsRecurring);
+            
+            CheckForChanges();
         }
 
         private void ToggleRecurring(bool enabled)
@@ -531,10 +546,8 @@ namespace SimpleReminders.Forms
                 if (cd.ShowDialog() == DialogResult.OK)
                 {
                     btn.BackColor = cd.Color;
-                    string hex = ColorTranslator.ToHtml(cd.Color);
-                    if (isBg) Reminder.BackgroundColor = hex;
-                    else Reminder.FontColor = hex;
                     UpdateResetButtonVisibilities();
+                    CheckForChanges();
                 }
             }
         }
@@ -546,15 +559,16 @@ namespace SimpleReminders.Forms
                 ofd.Filter = "Audio Files|*.wav";
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
-                    Reminder.SoundPath = ofd.FileName;
+                    _tempSoundPath = ofd.FileName;
                     UpdateSoundLabel();
+                    CheckForChanges();
                 }
             }
         }
 
         private void UpdateSoundLabel()
         {
-             string currentPath = Reminder.SoundPath;
+             string currentPath = _tempSoundPath;
              string defaultPath = _settingsService.Settings.DefaultSoundPath;
              
              bool isDefault = currentPath == defaultPath;
@@ -569,6 +583,46 @@ namespace SimpleReminders.Forms
              }
              
              _resetSoundBtn.Visible = !isDefault;
+        }
+
+        private void CheckForChanges()
+        {
+            if (_saveButton == null) return;
+            
+            bool hasChanges = false;
+            
+            // Text
+            hasChanges |= _titleBox.Text != Reminder.Title;
+            hasChanges |= _messageBox.Text != Reminder.Message;
+            
+            // Schedule
+            hasChanges |= Math.Abs((_dueDatePicker.Value - Reminder.DueDate).TotalSeconds) >= 1;
+            hasChanges |= _recurringCheck.Checked != Reminder.IsRecurring;
+            hasChanges |= new TimeSpan((int)_daysNum.Value, (int)_hoursNum.Value, (int)_minutesNum.Value, 0) != Reminder.RecurrenceInterval;
+            
+            // Days
+            hasChanges |= _specificDaysCheck.Checked != (Reminder.EnabledDays.Count > 0);
+            if (_specificDaysCheck.Checked)
+            {
+                var selectedDays = System.Linq.Enumerable.ToList(System.Linq.Enumerable.Select(System.Linq.Enumerable.Where(_dayCheckboxes, cb => cb.Checked), cb => (DayOfWeek)cb.Tag!));
+                hasChanges |= selectedDays.Count != Reminder.EnabledDays.Count || System.Linq.Enumerable.Any(System.Linq.Enumerable.Except(selectedDays, Reminder.EnabledDays));
+            }
+            
+            // Appearance
+            hasChanges |= ColorTranslator.ToHtml(_bgColorBtn.BackColor).ToUpper() != Reminder.BackgroundColor.ToUpper();
+            hasChanges |= ColorTranslator.ToHtml(_fontColorBtn.BackColor).ToUpper() != Reminder.FontColor.ToUpper();
+            hasChanges |= _fontSizeNum.Value != (decimal)Reminder.FontSize;
+            hasChanges |= _widthNum.Value != Reminder.Width;
+            hasChanges |= _heightNum.Value != Reminder.Height;
+            hasChanges |= (_fontFamilyCombo.SelectedItem?.ToString() ?? _settingsService.Settings.DefaultFontFamily) != Reminder.FontFamily;
+            
+            // Extra
+            hasChanges |= _tempSoundPath != Reminder.SoundPath;
+            hasChanges |= _autoFadeCheck.Checked != Reminder.AutoFade;
+            hasChanges |= _displayDurationNum.Value != Reminder.DisplayDurationSeconds;
+            hasChanges |= _showOnStartupIfMissedCheck.Checked != Reminder.ShowOnStartupIfMissed;
+
+            _saveButton.Enabled = hasChanges && !string.IsNullOrWhiteSpace(_titleBox.Text);
         }
 
         private void SaveData()
@@ -586,7 +640,7 @@ namespace SimpleReminders.Forms
             Reminder.FontFamily = _fontFamilyCombo.SelectedItem?.ToString() ?? _settingsService.Settings.DefaultFontFamily;
             Reminder.AutoFade = _autoFadeCheck.Checked;
             Reminder.DisplayDurationSeconds = (int)_displayDurationNum.Value;
-            Reminder.FireIfMissed = _fireIfMissedCheck.Checked;
+            Reminder.ShowOnStartupIfMissed = _showOnStartupIfMissedCheck.Checked;
 
             // Save enabled days
             Reminder.EnabledDays.Clear();
@@ -600,7 +654,8 @@ namespace SimpleReminders.Forms
                     }
                 }
             }
-            // SoundPath is already updated in PickSound/Reminder object reference
+
+            Reminder.SoundPath = _tempSoundPath;
         }
 
         private Button CreateResetButton()

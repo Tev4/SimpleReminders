@@ -27,8 +27,12 @@ namespace SimpleReminders.Forms
         private Button _resetOffsetBtn = null!;
         private Button _soundBtn = null!;
         private Button _resetSoundBtn = null!;
+        private Button _pickPosBtn = null!;
         private Label _soundLabel = null!;
-        private CheckBox _fireIfMissedCheck = null!;
+        private ComboBox _anchorCombo = null!;
+        private CheckBox _showOnStartupIfMissedCheck = null!;
+        private CheckBox _autoFadeCheck = null!;
+        private NumericUpDown _fadeDelayNum = null!;
         private Button _saveButton = null!;
         private Button _cancelButton = null!;
         private Button _restoreDefaultsBtn = null!;
@@ -55,9 +59,9 @@ namespace SimpleReminders.Forms
             var layout = new TableLayoutPanel();
             layout.Dock = DockStyle.Fill;
             layout.Padding = new Padding(15);
-            layout.RowCount = 10;
+            layout.RowCount = 12;
             layout.ColumnCount = 2;
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < 11; i++)
             {
                 layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             }
@@ -146,8 +150,8 @@ namespace SimpleReminders.Forms
             // Size
             layout.Controls.Add(new Label { Text = "Notification Size (W x H):", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 4);
             var sizePanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left, WrapContents = false };
-            _widthNum = new NumericUpDown { Minimum = 100, Maximum = 1000, Width = 60 };
-            _heightNum = new NumericUpDown { Minimum = 40, Maximum = 1000, Width = 60 };
+            _widthNum = new NumericUpDown { Minimum = 100, Maximum = 4000, Width = 60 };
+            _heightNum = new NumericUpDown { Minimum = 40, Maximum = 4000, Width = 60 };
             _widthNum.ValueChanged += (s, e) => UpdateResetButtonVisibilities();
             _heightNum.ValueChanged += (s, e) => UpdateResetButtonVisibilities();
             _resetSizeBtn = CreateResetButton();
@@ -163,7 +167,7 @@ namespace SimpleReminders.Forms
             layout.Controls.Add(sizePanel, 1, 4);
 
             // Default Offset (Position)
-            layout.Controls.Add(new Label { Text = "Default Position Offset:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 5);
+            layout.Controls.Add(new Label { Text = "Default Position (X x Y):", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 5);
             var offsetPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left, WrapContents = false };
             _offsetXNum = new NumericUpDown { Minimum = -2000, Maximum = 2000, Width = 60 };
             _offsetYNum = new NumericUpDown { Minimum = -2000, Maximum = 2000, Width = 60 };
@@ -175,15 +179,43 @@ namespace SimpleReminders.Forms
                 _offsetYNum.Value = 0;
                 _offsetXNum.Focus();
             };
-            offsetPanel.Controls.Add(new Label { Text = "X:", AutoSize = false, Width = 20, Height = 23, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 2, 0, 0) });
             offsetPanel.Controls.Add(_offsetXNum);
-            offsetPanel.Controls.Add(new Label { Text = "Y:", AutoSize = false, Width = 20, Height = 23, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(10, 2, 0, 0) });
+            offsetPanel.Controls.Add(new Label { Text = "x", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 0, 1) });
             offsetPanel.Controls.Add(_offsetYNum);
             offsetPanel.Controls.Add(_resetOffsetBtn);
             layout.Controls.Add(offsetPanel, 1, 5);
 
+            // Anchor Row
+            layout.Controls.Add(new Label { Text = "Anchor Point:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 6);
+            _anchorCombo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 150 };
+            foreach (var val in Enum.GetValues(typeof(NotificationAnchor))) _anchorCombo.Items.Add(val);
+            _anchorCombo.SelectedItem = _settings.DefaultAnchor;
+            _anchorCombo.SelectedIndexChanged += (s, e) => {
+                _settings.DefaultAnchor = (NotificationAnchor)_anchorCombo.SelectedItem;
+                UpdateResetButtonVisibilities();
+            };
+            layout.Controls.Add(_anchorCombo, 1, 6);
+
+            // Visual Picker Row
+            layout.Controls.Add(new Label { Text = "Visual Editor:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 7);
+            _pickPosBtn = new Button { Text = "Positioning Overlay", AutoSize = true, Height = 30, Margin = new Padding(3, 10, 3, 10) };
+            _pickPosBtn.Click += (s, e) => {
+                using (var overlay = new PositionPickerOverlay((int)_offsetXNum.Value, (int)_offsetYNum.Value, (int)_widthNum.Value, (int)_heightNum.Value, (NotificationAnchor)_anchorCombo.SelectedItem, _settings))
+                {
+                    if (overlay.ShowDialog() == DialogResult.OK)
+                    {
+                        _offsetXNum.Value = overlay.ResultX;
+                        _offsetYNum.Value = overlay.ResultY;
+                        _widthNum.Value = overlay.ResultWidth;
+                        _heightNum.Value = overlay.ResultHeight;
+                        _anchorCombo.SelectedItem = overlay.ResultAnchor;
+                    }
+                }
+            };
+            layout.Controls.Add(_pickPosBtn, 1, 7);
+
             // Sound
-            layout.Controls.Add(new Label { Text = "Notification Sound:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 6);
+            layout.Controls.Add(new Label { Text = "Notification Sound:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 8);
             var soundPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left, WrapContents = false };
             _soundBtn = new Button { Text = "Browse", Width = 80 };
             _soundBtn.Click += (s, e) => PickSound();
@@ -217,12 +249,26 @@ namespace SimpleReminders.Forms
             soundPanel.Controls.Add(_soundBtn);
             soundPanel.Controls.Add(_resetSoundBtn);
             soundPanel.Controls.Add(_soundLabel);
-            layout.Controls.Add(soundPanel, 1, 6);
+            layout.Controls.Add(soundPanel, 1, 8);
             
-            // Fire If Missed
-            layout.Controls.Add(new Label { Text = "Fire If Missed:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 7);
-            _fireIfMissedCheck = new CheckBox {};
-            layout.Controls.Add(_fireIfMissedCheck, 1, 7);
+            // Show on startup if missed
+            layout.Controls.Add(new Label { Text = "Show on startup if missed:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 9);
+            _showOnStartupIfMissedCheck = new CheckBox {};
+            layout.Controls.Add(_showOnStartupIfMissedCheck, 1, 9);
+
+            // Auto Fade
+            layout.Controls.Add(new Label { Text = "Auto-fade:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 10);
+            var fadePanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left, WrapContents = false };
+            _autoFadeCheck = new CheckBox { Text = "Fade away after", AutoSize = true, Margin = new Padding(0, 4, 5, 0) };
+            _fadeDelayNum = new NumericUpDown { Minimum = 1, Maximum = 3600, Width = 60 };
+            var secLabel = new Label { Text = "seconds", AutoSize = true, Margin = new Padding(0, 6, 0, 0) };
+            
+            _autoFadeCheck.CheckedChanged += (s, e) => _fadeDelayNum.Enabled = _autoFadeCheck.Checked;
+            
+            fadePanel.Controls.Add(_autoFadeCheck);
+            fadePanel.Controls.Add(_fadeDelayNum);
+            fadePanel.Controls.Add(secLabel);
+            layout.Controls.Add(fadePanel, 1, 10);
 
             // Buttons
             var btnPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Bottom, Height = 50, Padding = new Padding(0, 0, 10, 10) };
@@ -232,11 +278,26 @@ namespace SimpleReminders.Forms
             
             _restoreDefaultsBtn.Click += (s, e) => RestoreDefaults();
 
+
             _saveButton.Click += (s, e) =>
             {
                 SaveData();
                 this.Close();
             };
+            
+            // Hook up events for change tracking
+            _bgColorBtn.BackColorChanged += (s, e) => CheckForChanges();
+            _fontColorBtn.BackColorChanged += (s, e) => CheckForChanges();
+            _fontSizeNum.ValueChanged += (s, e) => CheckForChanges();
+            _widthNum.ValueChanged += (s, e) => CheckForChanges();
+            _heightNum.ValueChanged += (s, e) => CheckForChanges();
+            _offsetXNum.ValueChanged += (s, e) => CheckForChanges();
+            _offsetYNum.ValueChanged += (s, e) => CheckForChanges();
+            _fontFamilyCombo.SelectedIndexChanged += (s, e) => CheckForChanges();
+            _anchorCombo.SelectedIndexChanged += (s, e) => CheckForChanges();
+            _showOnStartupIfMissedCheck.CheckedChanged += (s, e) => CheckForChanges();
+            _autoFadeCheck.CheckedChanged += (s, e) => CheckForChanges();
+            _fadeDelayNum.ValueChanged += (s, e) => CheckForChanges();
 
             btnPanel.Controls.Add(_cancelButton);
             btnPanel.Controls.Add(_saveButton);
@@ -260,8 +321,13 @@ namespace SimpleReminders.Forms
             _fontFamilyCombo.SelectedIndex = index >= 0 ? index : 0;
 
             _tempSoundPath = _settings.DefaultSoundPath;
-            _fireIfMissedCheck.Checked = _settings.DefaultFireIfMissed;
+            _showOnStartupIfMissedCheck.Checked = _settings.DefaultShowOnStartupIfMissed;
+            _autoFadeCheck.Checked = _settings.DefaultAutoFade;
+            _fadeDelayNum.Value = _settings.DefaultFadeDelay;
+            _fadeDelayNum.Enabled = _autoFadeCheck.Checked;
             UpdateResetButtonVisibilities();
+            
+            CheckForChanges();
         }
 
 
@@ -325,6 +391,32 @@ namespace SimpleReminders.Forms
             
             // Check if sound differs from settings to show/hide reset correctly if needed 
             // (but UpdateSoundLabel already handles visibility of the red X based on current selection)
+            
+            CheckForChanges();
+        }
+
+        private void CheckForChanges()
+        {
+            if (_saveButton == null) return;
+            
+            bool hasChanges = false;
+            hasChanges |= ColorTranslator.ToHtml(_bgColorBtn.BackColor).ToUpper() != _settings.DefaultBackgroundColor.ToUpper();
+            hasChanges |= ColorTranslator.ToHtml(_fontColorBtn.BackColor).ToUpper() != _settings.DefaultFontColor.ToUpper();
+            hasChanges |= _fontSizeNum.Value != (decimal)_settings.DefaultFontSize;
+            hasChanges |= _widthNum.Value != _settings.DefaultWidth;
+            hasChanges |= _heightNum.Value != _settings.DefaultHeight;
+            hasChanges |= _offsetXNum.Value != _settings.DefaultOffsetX;
+            hasChanges |= _offsetYNum.Value != _settings.DefaultOffsetY;
+            hasChanges |= (_fontFamilyCombo.SelectedItem?.ToString() ?? "Segoe UI Variable Display") != _settings.DefaultFontFamily;
+            hasChanges |= _tempSoundPath != _settings.DefaultSoundPath;
+            hasChanges |= _showOnStartupIfMissedCheck.Checked != _settings.DefaultShowOnStartupIfMissed;
+            hasChanges |= _autoFadeCheck.Checked != _settings.DefaultAutoFade;
+            hasChanges |= _fadeDelayNum.Value != _settings.DefaultFadeDelay;
+            
+            NotificationAnchor currentAnchor = (NotificationAnchor)(_anchorCombo.SelectedItem ?? NotificationAnchor.BottomRight);
+            hasChanges |= currentAnchor != _settings.DefaultAnchor;
+
+            _saveButton.Enabled = hasChanges;
         }
 
         private void PickSound()
@@ -352,7 +444,9 @@ namespace SimpleReminders.Forms
             _settings.DefaultOffsetY = (int)_offsetYNum.Value;
             _settings.DefaultFontFamily = _fontFamilyCombo.SelectedItem?.ToString() ?? "Segoe UI Variable Display";
             _settings.DefaultSoundPath = _tempSoundPath;
-            _settings.DefaultFireIfMissed = _fireIfMissedCheck.Checked;
+            _settings.DefaultShowOnStartupIfMissed = _showOnStartupIfMissedCheck.Checked;
+            _settings.DefaultAutoFade = _autoFadeCheck.Checked;
+            _settings.DefaultFadeDelay = (int)_fadeDelayNum.Value;
             _settingsService.SaveSettings();
         }
 
@@ -372,7 +466,10 @@ namespace SimpleReminders.Forms
                 _offsetXNum.Value = 0;
                 _offsetYNum.Value = 0;
                 _tempSoundPath = string.Empty;
-                _fireIfMissedCheck.Checked = false;
+                _showOnStartupIfMissedCheck.Checked = false;
+                _autoFadeCheck.Checked = false;
+                _fadeDelayNum.Value = 15;
+                _anchorCombo.SelectedItem = NotificationAnchor.BottomRight;
 
                 UpdateSoundLabel();
                 UpdateResetButtonVisibilities();

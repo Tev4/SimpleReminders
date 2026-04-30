@@ -49,10 +49,10 @@ namespace SimpleReminders.Models
 
         // Auto-dismiss
         public bool AutoFade { get; set; } = false;
-        public int DisplayDurationSeconds { get; set; } = 5;
+        public int DisplayDurationSeconds { get; set; } = 15;
 
         // Missing handling
-        public bool FireIfMissed { get; set; } = false;
+        public bool ShowOnStartupIfMissed { get; set; } = false;
 
         public Reminder() { }
 

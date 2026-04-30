@@ -61,8 +61,10 @@ namespace SimpleReminders.Forms
                 BackgroundColor = Color.White
             };
             _offsetGrid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ExecutableName", HeaderText = "Executable", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
-            _offsetGrid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "XOffset", HeaderText = "X", Width = 50 });
-            _offsetGrid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "YOffset", HeaderText = "Y", Width = 50 });
+            _offsetGrid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "XOffset", HeaderText = "X", Width = 40 });
+            _offsetGrid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "YOffset", HeaderText = "Y", Width = 40 });
+            _offsetGrid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Width", HeaderText = "W", Width = 40 });
+            _offsetGrid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Height", HeaderText = "H", Width = 40 });
             
             layout.Controls.Add(_offsetGrid, 0, 0);
 
@@ -97,7 +99,9 @@ namespace SimpleReminders.Forms
             { 
                 ExecutablePath = r.ExecutablePath, 
                 XOffset = r.XOffset, 
-                YOffset = r.YOffset 
+                YOffset = r.YOffset,
+                Width = r.Width,
+                Height = r.Height
             }).ToList();
 
             RefreshOffsetGrid();
@@ -111,7 +115,7 @@ namespace SimpleReminders.Forms
 
         private void AddOffsetRule(object? sender, EventArgs e)
         {
-            using (var editor = new ExecutableOffsetEditorForm(_tempOffsets))
+            using (var editor = new ExecutableOffsetEditorForm(_settings, _tempOffsets))
             {
                 if (editor.ShowDialog() == DialogResult.OK)
                 {
@@ -127,7 +131,7 @@ namespace SimpleReminders.Forms
             var rule = _offsetGrid.SelectedRows[0].DataBoundItem as ExecutableOffsetRule;
             if (rule == null) return;
 
-            using (var editor = new ExecutableOffsetEditorForm(_tempOffsets, rule))
+            using (var editor = new ExecutableOffsetEditorForm(_settings, _tempOffsets, rule))
             {
                 if (editor.ShowDialog() == DialogResult.OK)
                 {

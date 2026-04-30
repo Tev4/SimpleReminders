@@ -36,6 +36,7 @@ namespace SimpleReminders.Forms
         private readonly StartupService _startupService;
         private readonly SettingsService _settingsService;
         private int _dragInsertIndex = -1;
+        private Reminder? _copiedReminder;
 
         public ManagerForm(ReminderManager reminderManager, SettingsService settingsService)
         {
@@ -106,6 +107,20 @@ namespace SimpleReminders.Forms
                 if (e.KeyCode == Keys.Delete)
                 {
                     DeleteReminder(s, e);
+                }
+                else if (e.Control && e.KeyCode == Keys.C)
+                {
+                    if (_remindersList.SelectedItem is Reminder reminder)
+                    {
+                        _copiedReminder = reminder;
+                    }
+                }
+                else if (e.Control && e.KeyCode == Keys.V)
+                {
+                    if (_copiedReminder != null)
+                    {
+                        PasteReminder(_copiedReminder);
+                    }
                 }
             };
 
@@ -510,41 +525,45 @@ namespace SimpleReminders.Forms
         {
             if (_remindersList.SelectedItem is Reminder selectedReminder)
             {
-                // Store the index of the selected item before refreshing the list
-                int selectedIndex = _remindersList.SelectedIndex;
-
-                var duplicatedReminder = new Reminder
-                {
-                    Id = Guid.NewGuid(),
-
-                    Title = selectedReminder.Title,
-                    Message = selectedReminder.Message,
-                    BackgroundColor = selectedReminder.BackgroundColor,
-                    FontColor = selectedReminder.FontColor,
-                    FontSize = selectedReminder.FontSize,
-                    Width = selectedReminder.Width,
-                    Height = selectedReminder.Height,
-                    IsRecurring = selectedReminder.IsRecurring,
-                    RecurrenceInterval = selectedReminder.RecurrenceInterval,
-                    DueDate = selectedReminder.DueDate,
-                    EnabledDays = new List<DayOfWeek>(selectedReminder.EnabledDays),
-                    IsPassed = selectedReminder.IsPassed,
-                    IsEnabled = selectedReminder.IsEnabled,
-                    SoundPath = selectedReminder.SoundPath
-                };
-
-                _reminderManager.Add(duplicatedReminder);
-                RefreshList();
-
-                // Ensure the same item is selected
-                if (selectedIndex >= 0 && selectedIndex < _remindersList.Items.Count)
-                {
-                    _remindersList.SelectedIndex = selectedIndex;
-                }
+                PasteReminder(selectedReminder);
             }
             else
             {
                 MessageBox.Show("No reminder selected to duplicate.");
+            }
+        }
+
+        private void PasteReminder(Reminder source)
+        {
+            var duplicatedReminder = new Reminder
+            {
+                Id = Guid.NewGuid(),
+                Title = source.Title,
+                Message = source.Message,
+                BackgroundColor = source.BackgroundColor,
+                FontColor = source.FontColor,
+                FontSize = source.FontSize,
+                Width = source.Width,
+                Height = source.Height,
+                IsRecurring = source.IsRecurring,
+                RecurrenceInterval = source.RecurrenceInterval,
+                DueDate = source.DueDate,
+                EnabledDays = source.EnabledDays != null ? new List<DayOfWeek>(source.EnabledDays) : new List<DayOfWeek>(),
+                IsPassed = source.IsPassed,
+                IsEnabled = source.IsEnabled,
+                SoundPath = source.SoundPath,
+                AutoFade = source.AutoFade,
+                DisplayDurationSeconds = source.DisplayDurationSeconds
+            };
+
+            _reminderManager.Add(duplicatedReminder);
+            RefreshList();
+
+            // Select the newly added reminder
+            int newIndex = _remindersList.Items.IndexOf(duplicatedReminder);
+            if (newIndex >= 0)
+            {
+                _remindersList.SelectedIndex = newIndex;
             }
         }
 
