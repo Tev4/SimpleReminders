@@ -65,7 +65,7 @@ namespace SimpleReminders.Forms
 
             var label = new Label
             {
-                Text = "DRAG TO MOVE\nRESIZE CORNERS\nRight Click Corner to Anchor\nDouble Click to Save",
+                Text = "DRAG TO MOVE\nRESIZE CORNERS\nRight Click Corner to Anchor\nDouble Click or Enter to Save",
                 ForeColor = ColorTranslator.FromHtml(settings.DefaultFontColor),
                 Font = new Font(settings.DefaultFontFamily, 9, FontStyle.Bold),
                 TextAlign = ContentAlignment.MiddleCenter,
