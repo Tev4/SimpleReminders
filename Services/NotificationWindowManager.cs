@@ -15,7 +15,7 @@ namespace SimpleReminders.Services
         private readonly List<NotificationForm> _openNotifications = new List<NotificationForm>();
         private readonly Queue<NotificationForm> _formPool = new Queue<NotificationForm>();
         private readonly int _spacing = 10;
-        private readonly int _bottomOffset = 50;
+        private int BottomOffset => WindowTrackingService.IsTaskbarAutoHideEnabled() ? 50 : 20;
         private readonly int _rightOffset = 20;
         private readonly SettingsService _settingsService;
         private readonly Dictionary<string, Font> _fontCache = new Dictionary<string, Font>();
@@ -27,14 +27,11 @@ namespace SimpleReminders.Services
         [DllImport("user32.dll")]
         private static extern IntPtr SetWinEventHook(uint eventMin, uint eventMax, IntPtr hmodWinEventProc, WinEventDelegate lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
 
-        [DllImport("user32.dll")]
-        private static extern bool UnhookWinEvent(IntPtr hWinEventHook);
-
         private delegate void WinEventDelegate(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
 
         private const uint EVENT_SYSTEM_FOREGROUND = 0x0003;
         private const uint WINEVENT_OUTOFCONTEXT = 0;
-        private string? _lastActivePath;
+
         private int _currentOffsetX;
         private int _currentOffsetY;
         private int _currentWidth;
@@ -167,9 +164,9 @@ namespace SimpleReminders.Services
             bool stackUpwards = (anchor == NotificationAnchor.BottomRight || anchor == NotificationAnchor.BottomLeft);
             
             if (stackUpwards)
-                currentY = workingArea.Bottom - _bottomOffset - _currentOffsetY;
+                currentY = workingArea.Bottom - BottomOffset - _currentOffsetY;
             else
-                currentY = workingArea.Top + _bottomOffset + _currentOffsetY;
+                currentY = workingArea.Top + BottomOffset + _currentOffsetY;
 
             // Loop in reverse order to keep newest notifications closest to the anchor point
             for (int i = _openNotifications.Count - 1; i >= 0; i--)
@@ -206,7 +203,6 @@ namespace SimpleReminders.Services
         {
             // This is synchronous but called from WinEventProc or constructor
             string? activePath = WindowTrackingService.GetActiveExecutablePath();
-            _lastActivePath = activePath;
 
             int offsetX = _settingsService.Settings.DefaultOffsetX;
             int offsetY = _settingsService.Settings.DefaultOffsetY;

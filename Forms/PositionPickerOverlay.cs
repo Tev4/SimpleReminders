@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using SimpleReminders.Models;
+using SimpleReminders.Services;
 
 namespace SimpleReminders.Forms
 {
@@ -99,7 +100,7 @@ namespace SimpleReminders.Forms
             var workingArea = screen != null ? screen.WorkingArea : SystemInformation.WorkingArea;
             
             int paddingX = 20;
-            int paddingY = 50;
+            int paddingY = WindowTrackingService.IsTaskbarAutoHideEnabled() ? 50 : 20;
             
             int startX = 0;
             int startY = 0;
@@ -237,7 +238,7 @@ namespace SimpleReminders.Forms
             var screen = Screen.PrimaryScreen;
             var workingArea = screen != null ? screen.WorkingArea : SystemInformation.WorkingArea;
             int paddingX = 20;
-            int paddingY = 50;
+            int paddingY = WindowTrackingService.IsTaskbarAutoHideEnabled() ? 50 : 20;
 
             _resultWidth = _placeholder.Width;
             _resultHeight = _placeholder.Height;

@@ -1,11 +1,11 @@
 using System;
-using System.Drawing;
+
 using System.Windows.Forms;
 using System.IO;
 using System.Media;
 using SimpleReminders.Services;
 using SimpleReminders.Forms;
-using System.Reflection;
+
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
