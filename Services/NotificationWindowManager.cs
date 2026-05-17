@@ -16,7 +16,7 @@ namespace SimpleReminders.Services
         private readonly Queue<NotificationForm> _formPool = new Queue<NotificationForm>();
         private readonly int _spacing = 10;
         private int BottomOffset => WindowTrackingService.IsTaskbarAutoHideEnabled() ? 50 : 20;
-        private readonly int _rightOffset = 20;
+        private readonly int _rightOffset = 10;
         private readonly SettingsService _settingsService;
         private readonly Dictionary<string, Font> _fontCache = new Dictionary<string, Font>();
         
