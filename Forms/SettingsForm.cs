@@ -33,11 +33,13 @@ namespace SimpleReminders.Forms
         private CheckBox _showOnStartupIfMissedCheck = null!;
         private CheckBox _autoFadeCheck = null!;
         private NumericUpDown _fadeDelayNum = null!;
+        private TextBox _hotkeyBox = null!;
+        private Button _resetHotkeyBtn = null!;
+        private Keys _currentHotkey = Keys.None;
         private Button _saveButton = null!;
         private Button _cancelButton = null!;
         private Button _restoreDefaultsBtn = null!;
         private string _tempSoundPath = string.Empty;
-
         public SettingsForm(SettingsService settingsService)
         {
             _settingsService = settingsService;
@@ -59,9 +61,9 @@ namespace SimpleReminders.Forms
             var layout = new TableLayoutPanel();
             layout.Dock = DockStyle.Fill;
             layout.Padding = new Padding(15);
-            layout.RowCount = 12;
+            layout.RowCount = 13;
             layout.ColumnCount = 2;
-            for (int i = 0; i < 11; i++)
+            for (int i = 0; i < 12; i++)
             {
                 layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             }
@@ -270,6 +272,34 @@ namespace SimpleReminders.Forms
             fadePanel.Controls.Add(secLabel);
             layout.Controls.Add(fadePanel, 1, 10);
 
+            // Hotkey
+            layout.Controls.Add(new Label { Text = "Dismiss Hotkey:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, 11);
+            var hotkeyPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left, WrapContents = false };
+            _hotkeyBox = new TextBox { Width = 150, ReadOnly = true, BackColor = SystemColors.Window };
+            _hotkeyBox.KeyDown += (s, e) => {
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                if (e.KeyCode == Keys.ShiftKey || e.KeyCode == Keys.ControlKey || e.KeyCode == Keys.Menu) return;
+                if (e.KeyCode == Keys.Escape) {
+                    _currentHotkey = Keys.None;
+                } else {
+                    _currentHotkey = e.KeyData;
+                }
+                UpdateHotkeyText();
+                CheckForChanges();
+                UpdateResetButtonVisibilities();
+            };
+            _resetHotkeyBtn = CreateResetButton();
+            _resetHotkeyBtn.Click += (s, e) => {
+                _currentHotkey = Keys.None;
+                UpdateHotkeyText();
+                CheckForChanges();
+                UpdateResetButtonVisibilities();
+            };
+            hotkeyPanel.Controls.Add(_hotkeyBox);
+            hotkeyPanel.Controls.Add(_resetHotkeyBtn);
+            layout.Controls.Add(hotkeyPanel, 1, 11);
+
             // Buttons
             var btnPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Bottom, Height = 50, Padding = new Padding(0, 0, 10, 10) };
             _cancelButton = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel };
@@ -325,11 +355,25 @@ namespace SimpleReminders.Forms
             _autoFadeCheck.Checked = _settings.DefaultAutoFade;
             _fadeDelayNum.Value = _settings.DefaultFadeDelay;
             _fadeDelayNum.Enabled = _autoFadeCheck.Checked;
+            _currentHotkey = _settings.DefaultDismissHotkey;
+            UpdateHotkeyText();
             UpdateResetButtonVisibilities();
             
             CheckForChanges();
         }
 
+        private void UpdateHotkeyText()
+        {
+            if (_currentHotkey == Keys.None)
+            {
+                _hotkeyBox.Text = "None (Press a key)";
+            }
+            else
+            {
+                var kc = new KeysConverter();
+                _hotkeyBox.Text = kc.ConvertToString(_currentHotkey) ?? "Unknown";
+            }
+        }
 
         private void UpdateSoundLabel()
         {
@@ -384,6 +428,11 @@ namespace SimpleReminders.Forms
                 _resetFontBtn.Visible = selectedFont != "Segoe UI Variable Display";
             }
 
+            if (_resetHotkeyBtn != null)
+            {
+                _resetHotkeyBtn.Visible = _currentHotkey != Keys.None;
+            }
+
             if (_soundLabel != null)
             {
                 UpdateSoundLabel();
@@ -412,6 +461,7 @@ namespace SimpleReminders.Forms
             hasChanges |= _showOnStartupIfMissedCheck.Checked != _settings.DefaultShowOnStartupIfMissed;
             hasChanges |= _autoFadeCheck.Checked != _settings.DefaultAutoFade;
             hasChanges |= _fadeDelayNum.Value != _settings.DefaultFadeDelay;
+            hasChanges |= _currentHotkey != _settings.DefaultDismissHotkey;
             
             NotificationAnchor currentAnchor = (NotificationAnchor)(_anchorCombo.SelectedItem ?? NotificationAnchor.BottomRight);
             hasChanges |= currentAnchor != _settings.DefaultAnchor;
@@ -447,6 +497,7 @@ namespace SimpleReminders.Forms
             _settings.DefaultShowOnStartupIfMissed = _showOnStartupIfMissedCheck.Checked;
             _settings.DefaultAutoFade = _autoFadeCheck.Checked;
             _settings.DefaultFadeDelay = (int)_fadeDelayNum.Value;
+            _settings.DefaultDismissHotkey = _currentHotkey;
             _settingsService.SaveSettings();
         }
 
@@ -470,6 +521,8 @@ namespace SimpleReminders.Forms
                 _autoFadeCheck.Checked = false;
                 _fadeDelayNum.Value = 15;
                 _anchorCombo.SelectedItem = NotificationAnchor.BottomRight;
+                _currentHotkey = Keys.None;
+                UpdateHotkeyText();
 
                 UpdateSoundLabel();
                 UpdateResetButtonVisibilities();

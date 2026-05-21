@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Windows.Forms;
 
 namespace SimpleReminders.Models
 {
@@ -30,6 +31,7 @@ namespace SimpleReminders.Models
         public bool DefaultAutoFade { get; set; } = true;
         public int DefaultFadeDelay { get; set; } = 15;
         public bool DefaultShowOnStartupIfMissed { get; set; } = false;
+        public Keys DefaultDismissHotkey { get; set; } = Keys.None;
 
         public List<ExecutableOffsetRule> ExecutableOffsets { get; set; } = new List<ExecutableOffsetRule>();
     }

@@ -357,7 +357,44 @@ namespace SimpleReminders.Forms
             // Font Family
             advancedPanel.Controls.Add(new Label { Text = "Font Family:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left }, 0, advRow);
             var fontPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Anchor = AnchorStyles.Left };
-            _fontFamilyCombo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 180 };
+            _fontFamilyCombo = new ComboBox { 
+                DropDownStyle = ComboBoxStyle.DropDownList, 
+                Width = 180,
+                DrawMode = DrawMode.OwnerDrawFixed,
+                ItemHeight = 28
+            };
+            _fontFamilyCombo.DrawItem += (s, e) => {
+                if (e.Index < 0) return;
+                e.DrawBackground();
+                string fontName = _fontFamilyCombo.Items[e.Index]?.ToString() ?? "";
+                
+                Font? itemFont = null;
+                try {
+                    using (var family = new FontFamily(fontName)) {
+                        if (family.IsStyleAvailable(FontStyle.Regular))
+                            itemFont = new Font(family, 10, FontStyle.Regular);
+                        else if (family.IsStyleAvailable(FontStyle.Bold))
+                            itemFont = new Font(family, 10, FontStyle.Bold);
+                        else if (family.IsStyleAvailable(FontStyle.Italic))
+                            itemFont = new Font(family, 10, FontStyle.Italic);
+                    }
+                } catch { }
+
+                Font fontToDraw = itemFont ?? e.Font ?? _fontFamilyCombo.Font;
+                
+                // Set the clipping region to ensure tall fonts don't draw outside their bounds
+                e.Graphics.SetClip(e.Bounds);
+
+                using (var brush = new SolidBrush(e.ForeColor)) {
+                    using (var sf = new StringFormat { LineAlignment = StringAlignment.Center }) {
+                        e.Graphics.DrawString(fontName, fontToDraw, brush, e.Bounds, sf);
+                    }
+                }
+                
+                e.Graphics.ResetClip();
+                itemFont?.Dispose();
+                e.DrawFocusRectangle();
+            };
             _resetFontBtn = CreateResetButton();
             _resetFontBtn.Click += (s, e) => {
                 string defaultFont = _settingsService.Settings.DefaultFontFamily;

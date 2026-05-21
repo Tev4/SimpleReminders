@@ -10,8 +10,42 @@ using SimpleReminders.Models;
 
 namespace SimpleReminders.Services
 {
-    public class NotificationWindowManager
+    public class NotificationWindowManager : IDisposable
     {
+        private class HotKeyWindow : NativeWindow, IDisposable
+        {
+            private const int WM_HOTKEY = 0x0312;
+            public event Action? HotKeyPressed;
+
+            public HotKeyWindow()
+            {
+                this.CreateHandle(new CreateParams());
+            }
+
+            protected override void WndProc(ref Message m)
+            {
+                if (m.Msg == WM_HOTKEY)
+                {
+                    HotKeyPressed?.Invoke();
+                }
+                base.WndProc(ref m);
+            }
+
+            public void Dispose()
+            {
+                this.DestroyHandle();
+            }
+        }
+
+        [DllImport("user32.dll")]
+        private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+
+        [DllImport("user32.dll")]
+        private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+        private const int DISMISS_HOTKEY_ID = 1;
+        private readonly HotKeyWindow _hotKeyWindow;
+
         private readonly List<NotificationForm> _openNotifications = new List<NotificationForm>();
         private readonly Queue<NotificationForm> _formPool = new Queue<NotificationForm>();
         private readonly int _spacing = 10;
@@ -41,6 +75,11 @@ namespace SimpleReminders.Services
         public NotificationWindowManager(SettingsService settingsService)
         {
             _settingsService = settingsService;
+            
+            _hotKeyWindow = new HotKeyWindow();
+            _hotKeyWindow.HotKeyPressed += OnDismissHotkeyPressed;
+            _settingsService.SettingsSaved += (s, e) => RegisterDismissHotkey();
+            RegisterDismissHotkey();
             
             // Optimization: Pre-warm the pool and force OS/driver initialization
             // We show the form off-screen to force the entire DWM/rendering pipeline to initialize
@@ -248,6 +287,40 @@ namespace SimpleReminders.Services
                 // Reposition all open notifications to the new window's offsets
                 await RepositionNotificationsAsync();
             }
+        }
+
+        private void RegisterDismissHotkey()
+        {
+            UnregisterHotKey(_hotKeyWindow.Handle, DISMISS_HOTKEY_ID);
+
+            Keys hotkey = _settingsService.Settings.DefaultDismissHotkey;
+            if (hotkey == Keys.None) return;
+
+            uint modifiers = 0;
+            if ((hotkey & Keys.Alt) == Keys.Alt) modifiers |= 0x0001;
+            if ((hotkey & Keys.Control) == Keys.Control) modifiers |= 0x0002;
+            if ((hotkey & Keys.Shift) == Keys.Shift) modifiers |= 0x0004;
+            // NoRepeat is 0x4000, maybe useful but let's stick to basic modifiers
+            
+            uint vk = (uint)(hotkey & Keys.KeyCode);
+            
+            RegisterHotKey(_hotKeyWindow.Handle, DISMISS_HOTKEY_ID, modifiers, vk);
+        }
+
+        private void OnDismissHotkeyPressed()
+        {
+            // Close the most recently opened notification
+            var formToClose = _openNotifications.LastOrDefault(f => f.Visible);
+            if (formToClose != null)
+            {
+                CloseNotification(formToClose);
+            }
+        }
+
+        public void Dispose()
+        {
+            UnregisterHotKey(_hotKeyWindow.Handle, DISMISS_HOTKEY_ID);
+            _hotKeyWindow.Dispose();
         }
     }
 }

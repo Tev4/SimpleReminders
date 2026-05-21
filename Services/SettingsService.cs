@@ -36,12 +36,15 @@ namespace SimpleReminders.Services
             }
         }
 
+        public event EventHandler? SettingsSaved;
+
         public void SaveSettings()
         {
             try
             {
                 string json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(_filePath, json);
+                SettingsSaved?.Invoke(this, EventArgs.Empty);
             }
             catch
             {
